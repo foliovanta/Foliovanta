@@ -1,56 +1,110 @@
-import { Webhook } from "svix";
+import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
-import { synchronizeClerkWebhook } from "@/lib/auth/clerk-webhook-sync";
+import { prisma } from "@/lib/db/prisma";
 
 export const runtime = "nodejs";
 
-export async function POST(request: Request) {
-  const secret = process.env.CLERK_WEBHOOK_SIGNING_SECRET;
+const noStoreHeaders = {
+  "Cache-Control": "no-store",
+};
 
-  if (!secret) {
-    console.error("Clerk webhook signing secret is missing");
+export async function GET() {
+  const { userId } = await auth();
 
-    return NextResponse.json({ error: "Webhook configuration unavailable" }, { status: 503 });
-  }
-
-  const svixId = request.headers.get("svix-id");
-  const svixTimestamp = request.headers.get("svix-timestamp");
-  const svixSignature = request.headers.get("svix-signature");
-
-  if (!svixId || !svixTimestamp || !svixSignature) {
-    return NextResponse.json({ error: "Missing webhook signature headers" }, { status: 400 });
-  }
-
-  let payload: unknown;
-
-  try {
-    const rawBody = await request.text();
-
-    new Webhook(secret).verify(rawBody, {
-      "svix-id": svixId,
-      "svix-timestamp": svixTimestamp,
-      "svix-signature": svixSignature,
-    });
-
-    payload = JSON.parse(rawBody) as unknown;
-  } catch {
-    return NextResponse.json({ error: "Invalid webhook signature" }, { status: 400 });
+  if (!userId) {
+    return NextResponse.json(
+      {
+        error: {
+          code: "UNAUTHENTICATED",
+          message: "Authentication required",
+        },
+      },
+      {
+        status: 401,
+        headers: noStoreHeaders,
+      },
+    );
   }
 
   try {
-    console.info("Verified Clerk webhook payload shape", {
-      isArray: Array.isArray(payload),
-      valueType: typeof payload,
-      keys: typeof payload === "object" && payload !== null ? Object.keys(payload) : [],
+    const user = await prisma.user.findUnique({
+      where: {
+        clerkUserId: userId,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        avatarUrl: true,
+        role: true,
+        status: true,
+      },
     });
-    const result = await synchronizeClerkWebhook(payload, svixId);
 
-    return NextResponse.json({ received: true, result }, { status: 200 });
+    if (!user) {
+      return NextResponse.json(
+        {
+          error: {
+            code: "USER_NOT_SYNCED",
+            message: "User account is being synchronized",
+          },
+        },
+        {
+          status: 404,
+          headers: noStoreHeaders,
+        },
+      );
+    }
+
+    if (user.status !== "ACTIVE") {
+      const suspended = user.status === "SUSPENDED";
+
+      return NextResponse.json(
+        {
+          error: {
+            code: suspended ? "ACCOUNT_SUSPENDED" : "ACCOUNT_UNAVAILABLE",
+            message: suspended
+              ? "Your account is suspended"
+              : "Your account is unavailable",
+          },
+        },
+        {
+          status: 403,
+          headers: noStoreHeaders,
+        },
+      );
+    }
+
+    return NextResponse.json(
+      {
+        data: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          avatarUrl: user.avatarUrl,
+          role: user.role,
+        },
+      },
+      {
+        status: 200,
+        headers: noStoreHeaders,
+      },
+    );
   } catch (error) {
-    // Do not log the raw webhook payload or sensitive user fields.
-    console.error("Clerk webhook synchronization failed", error);
+    console.error("Failed to fetch authenticated user", error);
 
-    return NextResponse.json({ error: "Webhook processing failed" }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: {
+          code: "INTERNAL_ERROR",
+          message: "Unable to retrieve user account",
+        },
+      },
+      {
+        status: 500,
+        headers: noStoreHeaders,
+      },
+    );
   }
 }

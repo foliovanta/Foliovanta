@@ -1,9 +1,33 @@
-<!-- BEGIN:nextjs-agent-rules -->
 
-## This is NOT the Next.js you know
+# Foliovanta Engineering Instructions
 
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+Before implementing a feature:
 
-This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+1. Read the relevant documents in /docs.
+2. Follow the PRD for product requirements.
+3. Follow the architecture and database documents for technical decisions.
+4. Follow the development roadmap for milestone order.
+5. Do not introduce architectural changes without explaining them.
+6. Keep implementation consistent with existing code.
+7. Update documentation when approved decisions change.
+8. Never claim a test passed unless it was executed.
 
-<!-- END:nextjs-agent-rules -->
+# Foliovanta — AI Engineering Guidelines
+
+## Source of Truth
+- Read relevant documents inside /docs before implementation.
+- Follow the PRD for product requirements.
+- Follow the architecture documents for technical decisions.
+- Follow the development roadmap for implementation order.
+
+## Engineering Rules
+- Follow existing project conventions.
+- Use production-ready patterns.
+- Avoid unnecessary dependencies.
+- Do not modify unrelated features.
+- Explain architectural changes before implementing them.
+
+## Verification
+- Run TypeScript, ESLint, and relevant tests.
+- Never claim a test passed without executing it.
+- Report changed files and verification results.

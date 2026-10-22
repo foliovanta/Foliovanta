@@ -34,6 +34,9 @@ jobs:
           DIRECT_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
         run: pnpm db:generate
 
+      - name: Generate Next.js Types
+        run: pnpm exec next typegen
+
       - name: Lint
         run: pnpm exec eslint . --max-warnings=0
 

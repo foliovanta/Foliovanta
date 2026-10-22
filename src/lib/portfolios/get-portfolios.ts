@@ -26,7 +26,7 @@ export type PortfolioSummary = Prisma.PortfolioGetPayload<{
 type ResolvedUser = { ok: true; userId: string } | { ok: false; error: PortfolioAccessError };
 
 // Clerk authenticates; the database authorizes. Never auto-create here.
-async function resolveActiveUser(clerkUserId: string): Promise<ResolvedUser> {
+export async function resolveActiveUser(clerkUserId: string): Promise<ResolvedUser> {
   const user = await prisma.user.findUnique({
     where: { clerkUserId },
     select: { id: true, status: true },

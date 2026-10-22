@@ -13,10 +13,30 @@ export default defineConfig({
     },
   },
   test: {
-    environment: "jsdom",
-    setupFiles: ["./tests/setup.ts"],
-    include: ["tests/unit/**/*.test.{ts,tsx}", "tests/integration/**/*.test.ts"],
     clearMocks: true,
     restoreMocks: true,
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: "unit",
+          environment: "jsdom",
+          setupFiles: ["./tests/setup.ts"],
+          include: ["tests/unit/**/*.test.{ts,tsx}"],
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: "integration",
+          environment: "node",
+          include: ["tests/integration/**/*.test.ts"],
+          // Database integration tests may wait on real round-trips; unit tests
+          // keep the default short timeout.
+          testTimeout: 30_000,
+          hookTimeout: 30_000,
+        },
+      },
+    ],
   },
 });

@@ -76,7 +76,9 @@ async function sendEvent(args: {
 
   const payload = JSON.stringify({
     type: args.type,
-    created_at: args.createdAtMs,
+    object: "event",
+    timestamp: args.createdAtMs,
+    instance_id: "ins_test",
     data: args.data,
   });
 

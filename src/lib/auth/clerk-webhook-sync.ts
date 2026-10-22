@@ -20,7 +20,9 @@ type ClerkUserData = {
 type ClerkEvent = {
   type: SupportedEventType;
   data: ClerkUserData;
-  created_at: number;
+  // Clerk's event envelope carries the emission time (Unix ms) at the top
+  // level as `timestamp` — not `created_at` (that lives inside `data`).
+  timestamp: number;
 };
 
 export type SyncResult = "processed" | "duplicate" | "ignored";
@@ -34,7 +36,7 @@ function parseEvent(value: unknown): ClerkEvent | null {
 
   const type = value.type;
   const data = value.data;
-  const createdAt = value.created_at;
+  const timestamp = value.timestamp;
 
   if (type !== "user.created" && type !== "user.updated" && type !== "user.deleted") {
     return null;
@@ -44,9 +46,9 @@ function parseEvent(value: unknown): ClerkEvent | null {
     !isRecord(data) ||
     typeof data.id !== "string" ||
     !data.id ||
-    typeof createdAt !== "number" ||
-    !Number.isFinite(createdAt) ||
-    createdAt <= 0
+    typeof timestamp !== "number" ||
+    !Number.isFinite(timestamp) ||
+    timestamp <= 0
   ) {
     throw new Error("Invalid Clerk webhook event payload");
   }
@@ -54,7 +56,7 @@ function parseEvent(value: unknown): ClerkEvent | null {
   return {
     type,
     data: data as ClerkUserData,
-    created_at: createdAt,
+    timestamp,
   };
 }
 
@@ -87,7 +89,7 @@ export async function synchronizeClerkWebhook(
   }
 
   const clerkUserId = event.data.id;
-  const eventTimestamp = new Date(event.created_at);
+  const eventTimestamp = new Date(event.timestamp);
 
   if (Number.isNaN(eventTimestamp.getTime())) {
     throw new Error("Invalid Clerk webhook timestamp");

@@ -92,7 +92,129 @@ model Portfolio {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Draft content (relational). Published snapshots are a separate future model.
+  profile     PortfolioProfile?
+  sections    PortfolioSection[]
+  projects    Project[]
+  experiences Experience[]
+  education   Education[]
+  skills      Skill[]
+
   @@index([ownerId])
   @@index([publicationStatus, moderationStatus])
   @@map("portfolios")
+}
+
+model PortfolioProfile {
+  portfolioId String    @id @db.Uuid
+  portfolio   Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  displayName   String  @default("")
+  headline      String?
+  bio           String?
+  location      String?
+  avatarAssetId String? @db.Uuid
+  emailPublic   String?
+
+  updatedAt DateTime @updatedAt
+
+  @@map("portfolio_profiles")
+}
+
+model PortfolioSection {
+  id          String    @id @default(uuid()) @db.Uuid
+  portfolioId String    @db.Uuid
+  portfolio   Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  sectionKey    String
+  isVisible     Boolean @default(true)
+  position      Int     @default(0)
+  layoutVariant String?
+  config        Json    @default("{}") @db.JsonB
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([portfolioId, sectionKey])
+  @@index([portfolioId, position])
+  @@map("portfolio_sections")
+}
+
+model Project {
+  id          String    @id @default(uuid()) @db.Uuid
+  portfolioId String    @db.Uuid
+  portfolio   Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  title         String
+  summary       String?
+  description   String?
+  projectUrl    String?
+  repositoryUrl String?
+  coverAssetId  String? @db.Uuid
+  isFeatured    Boolean @default(false)
+  position      Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([portfolioId, position, id])
+  @@map("projects")
+}
+
+model Experience {
+  id          String    @id @default(uuid()) @db.Uuid
+  portfolioId String    @db.Uuid
+  portfolio   Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  organization String
+  roleTitle    String
+  location     String?
+  startDate    DateTime? @db.Date
+  endDate      DateTime? @db.Date
+  isCurrent    Boolean   @default(false)
+  description  String?
+  position     Int       @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([portfolioId, position, id])
+  @@map("experiences")
+}
+
+model Education {
+  id          String    @id @default(uuid()) @db.Uuid
+  portfolioId String    @db.Uuid
+  portfolio   Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  institution  String
+  degree       String?
+  fieldOfStudy String?
+  startDate    DateTime? @db.Date
+  endDate      DateTime? @db.Date
+  description  String?
+  position     Int       @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([portfolioId, position, id])
+  @@map("education")
+}
+
+model Skill {
+  id          String    @id @default(uuid()) @db.Uuid
+  portfolioId String    @db.Uuid
+  portfolio   Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  name        String
+  category    String?
+  proficiency String?
+  position    Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([portfolioId, position, id])
+  @@map("skills")
 }

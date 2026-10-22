@@ -1,3 +1,11 @@
 allowBuilds:
+  "@prisma/engines": true
+  esbuild: true
+  prisma: true
   sharp: false
   unrs-resolver: false
+fetchRetries: 5
+fetchRetryMaxtimeout: 120000
+fetchRetryMintimeout: 20000
+fetchTimeout: 300000
+networkConcurrency: 4

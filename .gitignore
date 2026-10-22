@@ -45,3 +45,11 @@ next-env.d.ts
 /playwright-report/
 /coverage/
 /playwright/.cache/
+
+/src/generated/prisma
+
+# Local AI agent skills
+/.agents/skills/
+/.claude/skills/
+/.windsurf/skills/
+/skills-lock.json

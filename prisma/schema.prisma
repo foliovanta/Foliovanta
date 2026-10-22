@@ -33,6 +33,8 @@ model User {
   role        UserRole   @default(USER)
   status      UserStatus @default(ACTIVE)
 
+  portfolios Portfolio[]
+
   clerkEventTimestamp DateTime?
   clerkDeletedAt      DateTime?
 
@@ -55,4 +57,42 @@ model ClerkWebhookEvent {
 
   @@index([clerkUserId, eventTimestamp])
   @@map("clerk_webhook_events")
+}
+
+enum PortfolioPublicationStatus {
+  DRAFT
+  PUBLISHED
+  UNPUBLISHED
+}
+
+enum PortfolioModerationStatus {
+  CLEAR
+  UNDER_REVIEW
+  SUSPENDED
+}
+
+model Portfolio {
+  id      String @id @default(uuid()) @db.Uuid
+  ownerId String @db.Uuid
+  owner   User   @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+
+  slug  String  @unique
+  title String?
+
+  publicationStatus PortfolioPublicationStatus @default(DRAFT)
+  moderationStatus  PortfolioModerationStatus  @default(CLEAR)
+
+  draftRevision     BigInt @default(0)
+  nextVersionNumber Int    @default(1)
+
+  lastDraftSavedAt DateTime?
+  publishedAt      DateTime?
+  deletedAt        DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ownerId])
+  @@index([publicationStatus, moderationStatus])
+  @@map("portfolios")
 }

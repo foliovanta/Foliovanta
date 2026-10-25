@@ -46,6 +46,20 @@ export const updateSectionSchema = z
 
 export type UpdateSectionInput = z.infer<typeof updateSectionSchema>;
 
+// A reorder must be a complete permutation of the canonical registry: exactly
+// the right count, every entry a valid key, and no duplicates.
+export const reorderSectionsSchema = z.strictObject({
+  expectedRevision: expectedRevisionSchema,
+  sectionKeys: z
+    .array(sectionKeySchema)
+    .length(SECTION_KEYS.length)
+    .refine((keys) => new Set(keys).size === keys.length, {
+      message: "sectionKeys must be a unique permutation of the section registry",
+    }),
+});
+
+export type ReorderSectionsInput = z.infer<typeof reorderSectionsSchema>;
+
 const sectionSelect = {
   id: true,
   sectionKey: true,
@@ -119,4 +133,39 @@ export async function updateSection(
     return result;
   }
   return { ok: true as const, section: result.value, revision: result.revision };
+}
+
+export async function reorderSections(
+  clerkUserId: string,
+  portfolioId: string,
+  input: ReorderSectionsInput,
+) {
+  const { expectedRevision, sectionKeys } = input;
+
+  const result = await mutateDraft(clerkUserId, portfolioId, expectedRevision, async (tx) => {
+    // One transaction: assign deterministic 0-based positions, materializing
+    // missing rows with defaults and preserving existing isVisible/layoutVariant/
+    // config. position has no unique constraint, so direct 0..n-1 assignment is
+    // safe with no temporary-duplicate juggling.
+    for (const [index, sectionKey] of sectionKeys.entries()) {
+      await tx.portfolioSection.upsert({
+        where: { portfolioId_sectionKey: { portfolioId, sectionKey } },
+        create: { portfolioId, sectionKey, position: index },
+        update: { position: index },
+        select: { id: true },
+      });
+    }
+
+    const sections = await tx.portfolioSection.findMany({
+      where: { portfolioId },
+      orderBy: order,
+      select: sectionSelect,
+    });
+    return { ok: true as const, value: sections };
+  });
+
+  if (!result.ok) {
+    return result;
+  }
+  return { ok: true as const, sections: result.value, revision: result.revision };
 }

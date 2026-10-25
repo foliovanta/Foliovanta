@@ -12,6 +12,7 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:integration": "vitest run --project integration --no-file-parallelism",
     "test:e2e": "playwright test",
     "test:webhook": "tsx scripts/test-clerk-webhook.ts",
     "db:generate": "prisma generate",

@@ -1,14 +1,11 @@
 import { notFound } from "next/navigation";
 
+import { EducationEditor } from "./education-editor";
+import { ExperienceEditor } from "./experience-editor";
 import { ProfileEditor } from "./profile-editor";
-
-const UPCOMING: Record<string, string> = {
-  projects: "Projects",
-  experience: "Experience",
-  education: "Education",
-  skills: "Skills",
-  sections: "Sections",
-};
+import { ProjectsEditor } from "./projects-editor";
+import { SectionsEditor } from "./sections-editor";
+import { SkillsEditor } from "./skills-editor";
 
 export default async function EditorSectionPage({
   params,
@@ -21,17 +18,25 @@ export default async function EditorSectionPage({
     return <ProfileEditor portfolioId={portfolioId} />;
   }
 
-  const label = UPCOMING[section];
-  if (!label) {
-    notFound();
+  if (section === "projects") {
+    return <ProjectsEditor portfolioId={portfolioId} />;
   }
 
-  return (
-    <div className="rounded-lg border border-dashed border-zinc-300 bg-white p-8 text-center dark:border-zinc-700 dark:bg-zinc-900">
-      <h2 className="text-lg font-medium text-zinc-900 dark:text-zinc-100">{label}</h2>
-      <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-        {label} editing is coming soon.
-      </p>
-    </div>
-  );
+  if (section === "experience") {
+    return <ExperienceEditor portfolioId={portfolioId} />;
+  }
+
+  if (section === "education") {
+    return <EducationEditor portfolioId={portfolioId} />;
+  }
+
+  if (section === "skills") {
+    return <SkillsEditor portfolioId={portfolioId} />;
+  }
+
+  if (section === "sections") {
+    return <SectionsEditor portfolioId={portfolioId} />;
+  }
+
+  notFound();
 }

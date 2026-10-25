@@ -16,10 +16,10 @@ import { type ApiError, type PortfolioSummary, getPortfolio } from "@/lib/api/po
 
 const SECTIONS = [
   { key: "profile", label: "Profile", ready: true },
-  { key: "projects", label: "Projects", ready: false },
-  { key: "experience", label: "Experience", ready: false },
-  { key: "education", label: "Education", ready: false },
-  { key: "skills", label: "Skills", ready: false },
+  { key: "projects", label: "Projects", ready: true },
+  { key: "experience", label: "Experience", ready: true },
+  { key: "education", label: "Education", ready: true },
+  { key: "skills", label: "Skills", ready: true },
   { key: "sections", label: "Sections", ready: false },
 ] as const;
 
@@ -108,12 +108,14 @@ export function EditorShell({
     <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-8 font-sans sm:px-6 lg:flex-row">
       <aside className="lg:w-56 lg:shrink-0">
         <div className="mb-4">
-          <Link
-            href="/dashboard"
+          {/* Routed through the guard so unsaved edits are not silently lost. */}
+          <button
+            type="button"
+            onClick={() => navigate("/dashboard")}
             className="text-sm text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"
           >
             ← Dashboard
-          </Link>
+          </button>
           <h1 className="mt-2 truncate text-lg font-semibold text-zinc-900 dark:text-zinc-50">
             {portfolio.title || portfolio.slug}
           </h1>

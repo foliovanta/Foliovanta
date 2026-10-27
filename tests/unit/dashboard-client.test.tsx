@@ -29,6 +29,8 @@ const portfolio = (overrides: Partial<PortfolioSummary> = {}): PortfolioSummary 
   title: "Ada Lovelace",
   publicationStatus: "DRAFT",
   moderationStatus: "CLEAR",
+  publicSlug: "10482",
+  username: "ada",
   createdAt: new Date().toISOString(),
   ...overrides,
 });
@@ -53,6 +55,16 @@ describe("DashboardClient", () => {
     expect(edit).toHaveAttribute("href", "/editor/11111111-1111-1111-1111-111111111111/profile");
   });
 
+  it("shows a View live link to the new public URL for a published portfolio", async () => {
+    listMock.mockResolvedValue({
+      ok: true,
+      data: [portfolio({ publicationStatus: "PUBLISHED", publicSlug: "10482", username: "ada" })],
+    });
+    render(<DashboardClient />);
+    const view = await screen.findByRole("link", { name: "View live" });
+    expect(view).toHaveAttribute("href", "/10482/ada");
+  });
+
   it("shows a syncing state while the user is not yet provisioned", async () => {
     listMock.mockResolvedValue({
       ok: false,
@@ -72,18 +84,19 @@ describe("DashboardClient", () => {
     expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
   });
 
-  it("creates a portfolio and reloads the list", async () => {
+  it("creates a portfolio (no slug input) and reloads the list", async () => {
     const user = userEvent.setup();
     listMock.mockResolvedValueOnce({ ok: true, data: [] });
-    createMock.mockResolvedValue({ ok: true, data: portfolio({ slug: "grace" }) });
-    listMock.mockResolvedValueOnce({ ok: true, data: [portfolio({ slug: "grace" })] });
+    createMock.mockResolvedValue({ ok: true, data: portfolio() });
+    listMock.mockResolvedValueOnce({ ok: true, data: [portfolio()] });
 
     render(<DashboardClient />);
-    const slug = await screen.findByLabelText("Slug");
-    await user.type(slug, "grace");
+    await screen.findByText("Create your portfolio");
+    // There is no slug field any more; a title is optional.
+    expect(screen.queryByLabelText("Slug")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Create portfolio" }));
 
-    expect(createMock).toHaveBeenCalledWith({ slug: "grace" });
+    expect(createMock).toHaveBeenCalledWith({});
     expect(await screen.findByRole("link", { name: "Edit" })).toBeInTheDocument();
   });
 });

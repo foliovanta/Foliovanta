@@ -30,9 +30,9 @@ This document defines **how people navigate and interact with Foliovanta**, from
 | Surface | Proposed origin | Audience | Authentication | Primary purpose |
 |---|---|---|---|---|
 | Marketing | `https://foliovanta.com` | Anyone | None | Product information and template discovery |
-| Creator application | `https://app.foliovanta.com` | Signed-in creators | Clerk-managed session | Onboarding, dashboard, editor, publishing, settings |
-| Super Admin | `https://app.foliovanta.com/admin` | Authorized Super Admin | Clerk + DB role and account status | Operations, moderation, feedback, audit |
-| Public portfolios | `https://<slug>.foliovanta.com` | Anyone | None | Published, SEO-indexable portfolio |
+| Creator application | `https://foliovanta.com` (dashboard/editor) | Signed-in creators | Clerk-managed session | Onboarding, dashboard, editor, publishing, settings |
+| Super Admin | `https://foliovanta.com/admin` | Authorized Super Admin | Clerk + DB role and account status | Operations, moderation, feedback, audit |
+| Public portfolios | `https://foliovanta.com/{publicSlug}/{username}` | Anyone | None | Published, SEO-indexable portfolio (M3, path-based) |
 
 **Agreed:** one Next.js modular monolith; separate logical UI/server responsibilities, not independent FE/BE deployments. **Baseline:** marketing and creator app use the origins above. **Pending PoC:** Vercel wildcard DNS/TLS, host routing, reserved-subdomain enforcement, Clerk origin/session configuration and cache behavior. Do not assume cookies or auth state are automatically shared across origins; use Clerk-supported cross-origin flows and explicit redirect destinations.
 
@@ -146,7 +146,7 @@ All paths below are proposed canonical paths; the public portfolio origin is hos
 | S02 | `/settings/portfolio/versions` | Version history/rollback | Owner | Version detail/confirm rollback |
 | S03 | `/settings/account` | Account/profile/delete controls | Signed-in | Account actions |
 | F01 | `/feedback` | Product feedback | Signed-in baseline | Submit success/error |
-| U01 | `<slug>.foliovanta.com/` | Public published portfolio | Public if eligible | Render snapshot |
+| U01 | `foliovanta.com/{publicSlug}/{username}` | Public published portfolio | Public if eligible | Render snapshot; 307 canonical redirect on stale username |
 | U02 | Public not-found/unavailable | Invalid/unpublished/suspended | Public | Correct status, privacy-safe message |
 | AD01 | `/admin` | Admin overview | Super Admin | KPIs/queues |
 | AD02 | `/admin/users` | User list/search | Super Admin | User detail |
@@ -545,8 +545,8 @@ flowchart TD
 
 ### 14.1 Portfolio settings (`S01`)
 
-- Display canonical slug/public URL, publication status, current template, indexing preferences where supported, and relevant portfolio controls.
-- **Baseline:** slug immutable after allocation in MVP; show read-only slug. Future slug change requires redirect, uniqueness and SEO migration design.
+- Display the canonical public URL, publication status, current template, indexing preferences where supported, and relevant portfolio controls.
+- **M3:** the public URL is `foliovanta.com/{publicSlug}/{username}`. `publicSlug` is immutable and read-only; `username` is editable in the publish panel and 307-redirects stale URLs to the current canonical URL.
 - Unpublish action and access to versions; destructive actions require confirmation.
 - Explain difference between unpublish and delete.
 
@@ -935,7 +935,7 @@ These must not be silently converted into requirements during design or developm
 | FLOW-03 | Onboarding completion destination | Dashboard or editor | First-run UX |
 | FLOW-04 | Rich text scope | Plain text or restricted Tiptap | Editor, preview, sanitation |
 | FLOW-05 | Native contact form | External links/mailto in MVP | Public UI, abuse/privacy |
-| FLOW-06 | Slug changes | Immutable MVP | Settings, SEO, redirects |
+| FLOW-06 | Identity vs. username (M3) | publicSlug immutable; username editable w/ 307 canonical redirect | Publish panel, SEO, redirects |
 | FLOW-07 | User-visible version retention and restore-to-draft | History/rollback; draft restore separate | Settings, billing, schema |
 | FLOW-08 | Local crash-recovery storage | Proposed scoped local recovery | Privacy, offline UX |
 | FLOW-09 | Anonymous abuse reports and anti-spam | Policy-defined | Public site, moderation |

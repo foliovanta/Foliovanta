@@ -39,7 +39,6 @@ export async function GET() {
 }
 
 const createPortfolioSchema = z.strictObject({
-  slug: z.string().trim().min(1).max(100),
   title: z.string().trim().min(1).max(200).optional(),
 });
 
@@ -47,9 +46,6 @@ const errorStatus: Record<CreatePortfolioError, number> = {
   USER_NOT_SYNCED: 404,
   ACCOUNT_SUSPENDED: 403,
   ACCOUNT_UNAVAILABLE: 403,
-  INVALID_SLUG: 400,
-  SLUG_RESERVED: 400,
-  SLUG_TAKEN: 409,
   PORTFOLIO_LIMIT_REACHED: 409,
 };
 
@@ -57,9 +53,6 @@ const errorMessage: Record<CreatePortfolioError, string> = {
   USER_NOT_SYNCED: "User account is being synchronized",
   ACCOUNT_SUSPENDED: "Your account is suspended",
   ACCOUNT_UNAVAILABLE: "Your account is unavailable",
-  INVALID_SLUG: "The requested slug is not valid",
-  SLUG_RESERVED: "The requested slug is reserved",
-  SLUG_TAKEN: "The requested slug is already taken",
   PORTFOLIO_LIMIT_REACHED: "You already have a portfolio",
 };
 
@@ -101,7 +94,6 @@ export async function POST(request: Request) {
   try {
     const result = await createPortfolio({
       clerkUserId: userId,
-      slug: parsed.data.slug,
       ...(parsed.data.title !== undefined ? { title: parsed.data.title } : {}),
     });
 

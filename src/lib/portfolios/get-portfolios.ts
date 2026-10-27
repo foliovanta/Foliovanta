@@ -17,11 +17,25 @@ const portfolioSummarySelect = {
   publishedAt: true,
   createdAt: true,
   updatedAt: true,
+  // Owner identity needed to build the public URL (/{publicSlug}/{username}).
+  owner: { select: { publicSlug: true, username: true } },
 } satisfies Prisma.PortfolioSelect;
 
-export type PortfolioSummary = Prisma.PortfolioGetPayload<{
+type PortfolioSummaryRow = Prisma.PortfolioGetPayload<{
   select: typeof portfolioSummarySelect;
 }>;
+
+// Flatten the owner relation and stringify the BigInt publicSlug so the summary
+// is JSON-serializable at the route boundary.
+export type PortfolioSummary = Omit<PortfolioSummaryRow, "owner"> & {
+  publicSlug: string;
+  username: string;
+};
+
+function toSummary(row: PortfolioSummaryRow): PortfolioSummary {
+  const { owner, ...rest } = row;
+  return { ...rest, publicSlug: owner.publicSlug.toString(), username: owner.username };
+}
 
 type ResolvedUser = { ok: true; userId: string } | { ok: false; error: PortfolioAccessError };
 
@@ -62,7 +76,7 @@ export async function listPortfolios(
     select: portfolioSummarySelect,
   });
 
-  return { ok: true, portfolios };
+  return { ok: true, portfolios: portfolios.map(toSummary) };
 }
 
 export async function getPortfolioById(
@@ -88,5 +102,5 @@ export async function getPortfolioById(
     return { ok: false, error: "NOT_FOUND" };
   }
 
-  return { ok: true, portfolio };
+  return { ok: true, portfolio: toSummary(portfolio) };
 }

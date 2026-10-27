@@ -33,7 +33,16 @@ model User {
   role        UserRole   @default(USER)
   status      UserStatus @default(ACTIVE)
 
-  portfolios Portfolio[]
+  // Immutable, globally unique numeric public identity. Allocated by the
+  // `users_public_slug_seq` sequence (DB default) — never reused, never changed
+  // (a BEFORE UPDATE trigger enforces immutability). Serialized as a string at
+  // API boundaries (BigInt). The username below is the editable URL label.
+  publicSlug BigInt @unique @default(dbgenerated("nextval('users_public_slug_seq'::regclass)"))
+  // Editable, URL-safe, NOT unique. Presentation only — never an identity key.
+  username   String @default("portfolio")
+
+  portfolios        Portfolio[]
+  publishedVersions PortfolioVersion[] @relation("VersionPublisher")
 
   clerkEventTimestamp DateTime?
   clerkDeletedAt      DateTime?
@@ -85,6 +94,11 @@ model Portfolio {
   draftRevision     BigInt @default(0)
   nextVersionNumber Int    @default(1)
 
+  // Active published snapshot. The composite relation enforces that the active
+  // version belongs to this portfolio.
+  activeVersionId String?           @db.Uuid
+  activeVersion   PortfolioVersion? @relation("ActivePortfolioVersion", fields: [id, activeVersionId], references: [portfolioId, id], onDelete: NoAction, onUpdate: NoAction)
+
   lastDraftSavedAt DateTime?
   publishedAt      DateTime?
   deletedAt        DateTime?
@@ -92,7 +106,7 @@ model Portfolio {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Draft content (relational). Published snapshots are a separate future model.
+  // Draft content (relational).
   profile     PortfolioProfile?
   sections    PortfolioSection[]
   projects    Project[]
@@ -100,9 +114,41 @@ model Portfolio {
   education   Education[]
   skills      Skill[]
 
+  // Immutable published snapshots.
+  versions PortfolioVersion[] @relation("PortfolioVersions")
+
   @@index([ownerId])
   @@index([publicationStatus, moderationStatus])
+  @@index([id, activeVersionId])
   @@map("portfolios")
+}
+
+model PortfolioVersion {
+  id          String    @id @default(uuid()) @db.Uuid
+  portfolioId String    @db.Uuid
+  portfolio   Portfolio @relation("PortfolioVersions", fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  // Back-relation for the active-version pointer (no scalar fields on this side).
+  activeFor Portfolio[] @relation("ActivePortfolioVersion")
+
+  versionNumber       Int
+  schemaVersion       Int
+  sourceDraftRevision BigInt
+  templateId          String
+  templateVersion     String
+  snapshot            Json   @db.JsonB
+  contentHash         String
+
+  publishedById String @db.Uuid
+  publishedBy   User   @relation("VersionPublisher", fields: [publishedById], references: [id], onDelete: Restrict)
+
+  publishedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  @@unique([portfolioId, versionNumber])
+  @@unique([portfolioId, id])
+  @@index([portfolioId, createdAt])
+  @@map("portfolio_versions")
 }
 
 model PortfolioProfile {

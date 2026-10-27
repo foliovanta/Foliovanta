@@ -42,6 +42,8 @@ describe("EditorShell unsaved-changes guard", () => {
         title: "Ada",
         publicationStatus: "DRAFT",
         moderationStatus: "CLEAR",
+        publicSlug: "10482",
+        username: "ada",
         createdAt: "",
       },
     });

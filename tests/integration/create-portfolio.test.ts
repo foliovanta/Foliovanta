@@ -8,6 +8,10 @@ import type { prisma as Prisma } from "@/lib/db/prisma";
 
 import { assertSafeIntegrationDatabase, optedIn } from "./db-guard";
 
+// Internal slugs are server-generated; they must still satisfy the stored slug
+// format (hostname-label shape) used by the snapshot/readiness validators.
+const SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
+
 describe.skipIf(!optedIn)("createPortfolio (integration)", () => {
   let createPortfolio: typeof CreatePortfolio;
   let prisma: typeof Prisma;
@@ -24,8 +28,6 @@ describe.skipIf(!optedIn)("createPortfolio (integration)", () => {
     createdUserIds.push(user.id);
     return user;
   }
-
-  const uniqueSlug = () => `test-${randomUUID().slice(0, 12)}`;
 
   beforeAll(async () => {
     assertSafeIntegrationDatabase();
@@ -44,72 +46,39 @@ describe.skipIf(!optedIn)("createPortfolio (integration)", () => {
   });
 
   it("rejects an unsynced Clerk user", async () => {
-    const result = await createPortfolio({
-      clerkUserId: `test_${randomUUID()}`,
-      slug: uniqueSlug(),
-    });
+    const result = await createPortfolio({ clerkUserId: `test_${randomUUID()}` });
     expect(result).toEqual({ ok: false, error: "USER_NOT_SYNCED" });
   });
 
   it("rejects a non-active user", async () => {
     const user = await createActiveUser("SUSPENDED");
-    const result = await createPortfolio({
-      clerkUserId: user.clerkUserId,
-      slug: uniqueSlug(),
-    });
+    const result = await createPortfolio({ clerkUserId: user.clerkUserId });
     expect(result).toEqual({ ok: false, error: "ACCOUNT_SUSPENDED" });
   });
 
-  it("rejects an invalid slug", async () => {
+  it("creates a portfolio with a server-generated valid slug and trimmed title", async () => {
     const user = await createActiveUser();
-    const result = await createPortfolio({ clerkUserId: user.clerkUserId, slug: "!!!" });
-    expect(result).toEqual({ ok: false, error: "INVALID_SLUG" });
-  });
-
-  it("rejects a reserved slug", async () => {
-    const user = await createActiveUser();
-    const result = await createPortfolio({ clerkUserId: user.clerkUserId, slug: "Admin" });
-    expect(result).toEqual({ ok: false, error: "SLUG_RESERVED" });
-  });
-
-  it("creates a portfolio for an active user", async () => {
-    const user = await createActiveUser();
-    const result = await createPortfolio({
-      clerkUserId: user.clerkUserId,
-      slug: uniqueSlug(),
-      title: "  My Portfolio  ",
-    });
+    const result = await createPortfolio({ clerkUserId: user.clerkUserId, title: "  My Portfolio  " });
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.portfolio.title).toBe("My Portfolio");
       expect(result.portfolio.publicationStatus).toBe("DRAFT");
+      expect(result.portfolio.slug).toMatch(SLUG_PATTERN);
     }
-  });
-
-  it("surfaces a slug conflict across owners as SLUG_TAKEN", async () => {
-    const slug = uniqueSlug();
-    const owner = await createActiveUser();
-    const other = await createActiveUser();
-
-    const first = await createPortfolio({ clerkUserId: owner.clerkUserId, slug });
-    expect(first.ok).toBe(true);
-
-    const second = await createPortfolio({ clerkUserId: other.clerkUserId, slug });
-    expect(second).toEqual({ ok: false, error: "SLUG_TAKEN" });
   });
 
   it("enforces one non-deleted portfolio per owner", async () => {
     const user = await createActiveUser();
-    const first = await createPortfolio({ clerkUserId: user.clerkUserId, slug: uniqueSlug() });
+    const first = await createPortfolio({ clerkUserId: user.clerkUserId });
     expect(first.ok).toBe(true);
 
-    const second = await createPortfolio({ clerkUserId: user.clerkUserId, slug: uniqueSlug() });
+    const second = await createPortfolio({ clerkUserId: user.clerkUserId });
     expect(second).toEqual({ ok: false, error: "PORTFOLIO_LIMIT_REACHED" });
   });
 
-  it("allows a new portfolio once the prior one is soft-deleted", async () => {
+  it("allows a new portfolio with a distinct slug once the prior one is soft-deleted", async () => {
     const user = await createActiveUser();
-    const first = await createPortfolio({ clerkUserId: user.clerkUserId, slug: uniqueSlug() });
+    const first = await createPortfolio({ clerkUserId: user.clerkUserId });
     expect(first.ok).toBe(true);
     if (!first.ok) return;
 
@@ -118,32 +87,23 @@ describe.skipIf(!optedIn)("createPortfolio (integration)", () => {
       data: { deletedAt: new Date() },
     });
 
-    const second = await createPortfolio({ clerkUserId: user.clerkUserId, slug: uniqueSlug() });
+    const second = await createPortfolio({ clerkUserId: user.clerkUserId });
     expect(second.ok).toBe(true);
+    if (second.ok) {
+      // The full unique slug index still reserves the soft-deleted row's slug,
+      // so the regenerated slug must differ.
+      expect(second.portfolio.slug).not.toBe(first.portfolio.slug);
+    }
   });
 
   it("serializes concurrent creates for the same owner", async () => {
     const user = await createActiveUser();
     const [a, b] = await Promise.all([
-      createPortfolio({ clerkUserId: user.clerkUserId, slug: uniqueSlug() }),
-      createPortfolio({ clerkUserId: user.clerkUserId, slug: uniqueSlug() }),
+      createPortfolio({ clerkUserId: user.clerkUserId }),
+      createPortfolio({ clerkUserId: user.clerkUserId }),
     ]);
 
     const outcomes = [a, b].map((r) => (r.ok ? "ok" : r.error)).sort();
     expect(outcomes).toEqual(["PORTFOLIO_LIMIT_REACHED", "ok"]);
-  });
-
-  it("lets only one owner win a concurrent slug race", async () => {
-    const slug = uniqueSlug();
-    const first = await createActiveUser();
-    const second = await createActiveUser();
-
-    const [a, b] = await Promise.all([
-      createPortfolio({ clerkUserId: first.clerkUserId, slug }),
-      createPortfolio({ clerkUserId: second.clerkUserId, slug }),
-    ]);
-
-    const outcomes = [a, b].map((r) => (r.ok ? "ok" : r.error)).sort();
-    expect(outcomes).toEqual(["SLUG_TAKEN", "ok"]);
   });
 });

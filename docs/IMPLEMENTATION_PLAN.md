@@ -13,7 +13,7 @@
 
 ## 1. Executive implementation strategy
 
-Foliovanta is a production multi-tenant portfolio-builder SaaS. A creator signs up, completes guided onboarding, edits structured portfolio content, chooses among **Minimal / Professional / Creative** templates, customizes validated design tokens, previews changes, and explicitly publishes an SEO-friendly portfolio at a generated `*.foliovanta.com` subdomain. Public pages serve **immutable published snapshots**, not editable drafts. Super Admin manages users, moderation, abuse reports, feedback, and audit history.
+Foliovanta is a production multi-tenant portfolio-builder SaaS. A creator signs up, completes guided onboarding, edits structured portfolio content, chooses among **Minimal / Professional / Creative** templates, customizes validated design tokens, previews changes, and explicitly publishes an SEO-friendly portfolio at `foliovanta.com/{publicSlug}/{username}` (M3 path-based URL; see `docs/decisions/M3-URL-IDENTITY.md`). Public pages serve **immutable published snapshots**, not editable drafts. Super Admin manages users, moderation, abuse reports, feedback, and audit history.
 
 **Architecture baseline:** One Next.js 16 App Router modular monolith with strict server-only service boundaries; TypeScript, Tailwind, shadcn/ui/Radix, Clerk sessions, Neon PostgreSQL + Prisma, native `fetch` + TanStack Query, React Hook Form + Zod, selective Zustand, Cloudflare R2, Vercel, GA4 + database business events, Sentry, GitHub Actions, Vitest/RTL/Playwright.
 
@@ -32,7 +32,7 @@ Foliovanta is a production multi-tenant portfolio-builder SaaS. A creator signs 
 
 ### 1.2 Scope boundary
 
-**MVP in scope:** marketing and template discovery; Clerk auth; one portfolio per user; resumable/skippable onboarding; creator dashboard; structured editor for Profile, About, Experience, Education, Projects, Skills, Certifications, Contact/Social; section visibility/reorder; three responsive templates; controlled appearance options; autosave and preview; explicit publish, republish, unpublish, version history/rollback capability; generated public subdomains; SEO/sharing; R2 media; Super Admin moderation/feedback/reports/audit; GA4 and durable business events; security/operability/testing.
+**MVP in scope:** marketing and template discovery; Clerk auth; one portfolio per user; resumable/skippable onboarding; creator dashboard; structured editor for Profile, About, Experience, Education, Projects, Skills, Certifications, Contact/Social; section visibility/reorder; three responsive templates; controlled appearance options; autosave and preview; explicit publish, republish, unpublish, version history/rollback capability; path-based public URLs at `foliovanta.com/{publicSlug}/{username}` (M3); SEO/sharing; R2 media; Super Admin moderation/feedback/reports/audit; GA4 and durable business events; security/operability/testing.
 
 **Future, not MVP commitments:** paid subscriptions, custom domains, multiple portfolios per user, generic drag-and-drop page builder, arbitrary HTML/CSS/JS, live collaborative editing, native mobile app, advanced creator analytics, real-time inbox/push, third-party public API, AI-generated content. Design for evolution, but do not implement speculative infrastructure.
 
@@ -331,10 +331,10 @@ flowchart TD
 - [ ] **PUB-02 [FE/BE]** Publish barrier: flush pending edits, wait for acknowledgment, block unresolved conflicts, submit confirmed expected revision and idempotency key.
 - [ ] **PUB-03 [BE]** Transactional publish: authorize; lock/serialize per portfolio; read consistent draft; validate; create immutable snapshot; allocate version; update pointer; write audit + outbox; commit.
 - [ ] **PUB-04 [BE]** Idempotent republish and version history; rollback changes active pointer only; unpublish and moderation eligibility independent of draft.
-- [ ] **PUB-05 [OPS/BE]** Hostname routing for `foliovanta.com`, `app.foliovanta.com`, and `<slug>.foliovanta.com`; canonical slug reservation; unknown host/slug behavior.
+- [x] **PUB-05 [OPS/BE]** Path-based public routing `foliovanta.com/{publicSlug}/{username}` (M3); resolve by numeric `User.publicSlug`; 307 canonical redirect for stale usernames and legacy `/p/{slug}`; uniform 404 for non-public. No wildcard DNS.
 - [ ] **PUB-06 [FE/BE]** SSR public renderer reads active snapshot only; no Clerk requirement for visitors; appropriate 404/unavailable status and noindex behavior.
 - [ ] **PUB-07 [BE/OPS]** Cache design with publication invalidation and bounded revocation for suspend/unpublish; never cache private editor data publicly.
-- [ ] **PUB-08 [FE/BE]** Next.js Metadata API, Open Graph/Twitter cards, canonical URLs, JSON-LD, sitemap, robots, Search Console readiness.
+- [ ] **PUB-08 [FE/BE]** Next.js Metadata API, Open Graph/Twitter cards, canonical URLs (built from a validated `NEXT_PUBLIC_APP_URL`, pointing at the current username so renames don't duplicate-index), JSON-LD, sitemap, robots, Search Console readiness.
 - [ ] **PUB-09 [FE]** Private preview, readiness screen, publish success, version history/rollback UI per approved MVP scope.
 - [ ] **PUB-10 [QA/SEC]** Concurrent publish/edit, immutable version attempts, cache-warm suspension, stale content, invalid host, template upgrade, SEO and status-code tests.
 

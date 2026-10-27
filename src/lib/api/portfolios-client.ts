@@ -16,6 +16,9 @@ export type PortfolioSummary = {
   title: string | null;
   publicationStatus: string;
   moderationStatus: string;
+  // Owner identity for building the public URL (/{publicSlug}/{username}).
+  publicSlug: string;
+  username: string;
   createdAt: string;
   updatedAt?: string;
   lastDraftSavedAt?: string | null;
@@ -100,7 +103,7 @@ export function listPortfolios() {
   return request<PortfolioSummary[]>("/api/portfolios");
 }
 
-export function createPortfolio(input: { slug: string; title?: string }) {
+export function createPortfolio(input: { title?: string } = {}) {
   return request<PortfolioSummary>("/api/portfolios", {
     method: "POST",
     body: JSON.stringify(input),
@@ -437,5 +440,86 @@ export function reorderSections(
   return request<SectionsPayload>(`/api/portfolios/${portfolioId}/sections/reorder`, {
     method: "PATCH",
     body: JSON.stringify({ expectedRevision, sectionKeys }),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Publishing workflow
+// ---------------------------------------------------------------------------
+
+export type PublishReadinessIssue = { field: string; code: string; message: string };
+export type PublishReadiness = { ok: true } | { ok: false; issues: PublishReadinessIssue[] };
+
+export type ActiveVersionMeta = {
+  versionNumber: number;
+  publishedAt: string;
+  templateId: string;
+  templateVersion: string;
+};
+
+export type PublishStatus = {
+  slug: string;
+  publicSlug: string;
+  username: string;
+  publicationStatus: "DRAFT" | "PUBLISHED" | "UNPUBLISHED";
+  moderationStatus: "CLEAR" | "UNDER_REVIEW" | "SUSPENDED";
+  revision: string;
+  publishedAt: string | null;
+  hasUnpublishedChanges: boolean;
+  readiness: PublishReadiness;
+  activeVersion: ActiveVersionMeta | null;
+};
+
+export type PublishedResult = {
+  versionNumber: number;
+  publicationStatus: "PUBLISHED";
+  publishedAt: string;
+  revision: string;
+  contentHash: string;
+  created: boolean;
+};
+
+export type UnpublishedResult = {
+  publicationStatus: "DRAFT" | "PUBLISHED" | "UNPUBLISHED";
+  revision: string;
+};
+
+export type VersionSummary = {
+  versionNumber: number;
+  publishedAt: string;
+  templateId: string;
+  templateVersion: string;
+  isActive: boolean;
+};
+
+export type VersionPage = { versions: VersionSummary[]; nextCursor: number | null };
+
+export function getPublishStatus(portfolioId: string) {
+  return request<PublishStatus>(`/api/portfolios/${portfolioId}/publish-status`);
+}
+
+export function publishPortfolio(portfolioId: string, expectedRevision: string) {
+  return request<PublishedResult>(`/api/portfolios/${portfolioId}/publish`, {
+    method: "POST",
+    body: JSON.stringify({ expectedRevision }),
+  });
+}
+
+export function unpublishPortfolio(portfolioId: string) {
+  return request<UnpublishedResult>(`/api/portfolios/${portfolioId}/unpublish`, {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}
+
+export function listVersions(portfolioId: string, cursor?: number) {
+  const query = cursor !== undefined ? `?cursor=${cursor}` : "";
+  return request<VersionPage>(`/api/portfolios/${portfolioId}/versions${query}`);
+}
+
+export function updateUsername(portfolioId: string, username: string) {
+  return request<{ username: string }>(`/api/portfolios/${portfolioId}/username`, {
+    method: "PATCH",
+    body: JSON.stringify({ username }),
   });
 }

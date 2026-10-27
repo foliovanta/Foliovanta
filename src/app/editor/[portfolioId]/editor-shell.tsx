@@ -20,7 +20,8 @@ const SECTIONS = [
   { key: "experience", label: "Experience", ready: true },
   { key: "education", label: "Education", ready: true },
   { key: "skills", label: "Skills", ready: true },
-  { key: "sections", label: "Sections", ready: false },
+  { key: "sections", label: "Sections", ready: true },
+  { key: "publish", label: "Publish", ready: true },
 ] as const;
 
 type GuardValue = { setDirty: (dirty: boolean) => void };

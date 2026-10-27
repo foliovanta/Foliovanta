@@ -4,6 +4,7 @@ import { EducationEditor } from "./education-editor";
 import { ExperienceEditor } from "./experience-editor";
 import { ProfileEditor } from "./profile-editor";
 import { ProjectsEditor } from "./projects-editor";
+import { PublishPanel } from "./publish-panel";
 import { SectionsEditor } from "./sections-editor";
 import { SkillsEditor } from "./skills-editor";
 
@@ -36,6 +37,10 @@ export default async function EditorSectionPage({
 
   if (section === "sections") {
     return <SectionsEditor portfolioId={portfolioId} />;
+  }
+
+  if (section === "publish") {
+    return <PublishPanel portfolioId={portfolioId} />;
   }
 
   notFound();

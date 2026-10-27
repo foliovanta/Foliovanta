@@ -55,7 +55,7 @@ Foliovanta combines a guided professional profile workflow, curated template qua
 - **Tagline:** “Your story. Your work. Your identity.”
 - **Primary web presence (planned):** `foliovanta.com`.
 - **Application (planned):** `app.foliovanta.com`.
-- **Public portfolio URLs (planned):** `<unique-slug>.foliovanta.com`.
+- **Public portfolio URLs:** `foliovanta.com/{publicSlug}/{username}` (path-based; see `docs/decisions/M3-URL-IDENTITY.md`). The earlier `<slug>.foliovanta.com` subdomain scheme is superseded.
 - **Brand/domain clearance:** **Open**; trademark availability, domain ownership, and legal use have not been verified.
 
 ## 3. Goals, non-goals, and principles
@@ -120,7 +120,7 @@ Personas influence onboarding defaults and template suggestions; they must not p
 - Public marketing landing page and template discovery.
 - Clerk-based signup/signin, Google and email/password options, account lifecycle integration.
 - Guided, skippable onboarding with persona, profile, background, projects, template selection.
-- One portfolio per user; stable unique hosted subdomain.
+- One portfolio per user; stable public URL at `foliovanta.com/{publicSlug}/{username}` (M3).
 - Structured editor for Profile, About, Experience, Education, Projects, Skills, Certifications, and Contact/Social.
 - Section visibility, ordering, and supported section layout variants.
 - Three launch templates: Minimal, Professional, Creative.
@@ -169,7 +169,7 @@ Routes below are **planning-level URL proposals**, not yet the definitive Next.j
 | Editor | `/editor/profile`, `/editor/about`, `/editor/experience`, `/editor/education`, `/editor/projects`, `/editor/skills`, `/editor/certifications`, `/editor/contact`, `/editor/design`, `/editor/layout` |
 | Preview / publish | `/preview`, `/publish`, `/publish/success`, confirmation/error states |
 | Settings | `/settings/portfolio`, `/settings/portfolio/versions`, `/settings/account`, `/feedback` |
-| Public | `<slug>.foliovanta.com`, 404, unpublished, suspended/unavailable states |
+| Public | `foliovanta.com/{publicSlug}/{username}`, 404, unpublished, suspended/unavailable states |
 | Super Admin | `/admin`, `/admin/users`, `/admin/users/[id]`, `/admin/portfolios`, `/admin/portfolios/[id]`, `/admin/feedback`, `/admin/reports`, `/admin/audit-logs` |
 | Future Admin | `/admin/analytics`, `/admin/settings` |
 
@@ -427,7 +427,7 @@ Published snapshots must record content schema version, template identity/versio
 
 ### 15.1 Slug policy
 
-**Agreed direction:** Allocate a canonical lowercase, unique slug, for example `rishab-thakur-a7k2`. Reserved hostnames must not be available for portfolio allocation. **Proposed MVP rule:** Keep slugs immutable after allocation; a future slug-change workflow would need redirects and SEO rules.
+**Current (M3):** Public identity is the immutable, unique, numeric `User.publicSlug` plus an editable, normalized, **non-unique** `User.username`, giving `foliovanta.com/{publicSlug}/{username}`. Users no longer choose a public textual slug; the internal `Portfolio.slug` is now server-generated and kept only for legacy snapshots/links. A renamed username 307-redirects stale URLs to the current canonical URL (with `rel=canonical` for SEO). See `docs/decisions/M3-URL-IDENTITY.md`.
 
 ### 15.2 External links and contact
 
@@ -657,7 +657,7 @@ Cross-user portfolio access, slug enumeration, unsafe external links, script inj
 |---|---|---|
 | BR-01 | One portfolio per user in MVP UI/business policy | Agreed |
 | BR-02 | Future multiple portfolios should not require fundamental schema redesign | Agreed |
-| BR-03 | Hosted slug must be unique and exclude reserved names | Agreed |
+| BR-03 | Public identity is the immutable unique numeric User.publicSlug; the URL username is editable and non-unique (M3) | Agreed |
 | BR-04 | Portfolio is private until explicitly published | Agreed |
 | BR-05 | Editing a draft does not change published content | Agreed |
 | BR-06 | Section hide/show must not delete underlying content | Agreed |
@@ -665,7 +665,7 @@ Cross-user portfolio access, slug enumeration, unsafe external links, script inj
 | BR-08 | User cannot self-reinstate a suspended portfolio | Agreed |
 | BR-09 | Free MVP with configurable usage quotas | Agreed |
 | BR-10 | Quota values and over-limit handling | Open |
-| BR-11 | Slug immutable after allocation | Proposed |
+| BR-11 | User.publicSlug immutable after allocation; username freely editable (M3) | Agreed |
 | BR-12 | Published-version history retention and maximum count | Open |
 | BR-13 | Email verification required before first publish | Agreed direction |
 | BR-14 | Deletion grace period and erasure timetable | Open |

@@ -3,7 +3,7 @@ import "server-only";
 import { z } from "zod";
 
 import type { Prisma } from "@/generated/prisma/client";
-import { prisma } from "@/lib/db/prisma";
+import { prisma, TRANSACTION_OPTIONS } from "@/lib/db/prisma";
 import { type PortfolioAccessError, resolveActiveUser } from "@/lib/portfolios/get-portfolios";
 
 // Revisions are unbounded (BigInt). Accept a numeric string or a safe integer
@@ -71,7 +71,7 @@ export async function mutateDraft<T, E = never>(
       }
 
       return { ok: true, value: result.value, revision: newRevision } as const;
-    });
+    }, TRANSACTION_OPTIONS);
   } catch (error) {
     if (error instanceof AbortDraftMutation) {
       return { ok: false, error: error.failure as E };

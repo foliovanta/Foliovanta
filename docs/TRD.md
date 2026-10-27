@@ -93,9 +93,9 @@ Super Admin browser ─────────┘                   │
                           Sentry / logs / GA4 / operational monitoring
 ```
 
-**Hostnames (design targets, not deployed facts):** `foliovanta.com` marketing; `app.foliovanta.com` authenticated app and `/admin`; `*.foliovanta.com` user portfolios. Reserve `www`, `app`, `admin`, `api`, `support`, `static`, and other operational names. Domain registration, trademark clearance, wildcard DNS, TLS, Clerk allowed origins/redirects, and Vercel compatibility remain unverified.
+**Hostnames (design targets, not deployed facts):** `foliovanta.com` marketing + authenticated app + `/admin`; public portfolios are served **path-based** on the same origin at `foliovanta.com/{publicSlug}/{username}` (M3 — the earlier `*.foliovanta.com` wildcard scheme is superseded and no wildcard DNS is required). Domain registration, trademark clearance, TLS, Clerk allowed origins/redirects, and Vercel compatibility remain unverified.
 
-**Hostname resolution:** A narrowly scoped Next.js `proxy.ts`/routing layer identifies trusted hostnames and rewrites portfolio hosts to a public route. It must reject malformed/unknown hosts and prevent path collisions. **The proxy is not an authorization boundary**: server loaders and services independently enforce visibility. Host parsing must use a trusted normalized host from the deployment environment; never trust arbitrary forwarded headers without provider-specific validation. Canonicalization and redirect rules must prevent duplicate indexing. Preview is never accessible through the public hostname.
+**Public routing:** Public portfolios are resolved by the numeric `User.publicSlug` through server loaders (no host rewrite, no wildcard proxy). The Clerk middleware protects only `/dashboard` and `/editor`; public routes are unauthenticated. **Routing is not an authorization boundary**: server loaders and services independently enforce visibility. Canonical URLs are built from a validated `NEXT_PUBLIC_APP_URL`, never from forwarded Host headers. Stale usernames 307-redirect to the current canonical URL (with `rel=canonical`) so renames never create duplicate indexed URLs; non-public portfolios return a uniform 404 (no redirect, no existence leak). Preview is never publicly accessible. See `docs/decisions/M3-URL-IDENTITY.md`.
 
 **Deployment units:** one Next.js application, one PostgreSQL database per environment, logically separate R2 buckets/prefixes per environment, isolated Clerk environment/keys, isolated GA4 and Sentry configurations. No shared production secrets or writable production DB from preview deployments. Environment-specific webhook destinations and redirect URLs must be configured explicitly.
 
@@ -303,7 +303,7 @@ Use durable transactional outbox records for critical publish/unpublish/moderati
 
 ## 12. Public routing, caching and SEO
 
-Public URL design: `https://{slug}.foliovanta.com`, unique case-normalized slug, reserved-name registry, atomic allocation. Proposed MVP slug immutability; changes require redirect/canonical and historical reservation policy if introduced. Validate wildcard routing/TLS on Vercel with Clerk coexistence in an executable PoC before committing to production. Unknown slugs return real 404; unpublished/suspended/deleted cases must use deliberately specified 404/410 or other safe status, not 200 with an error page. Do not reveal private moderation reasons to anonymous visitors.
+Public URL design (M3): `https://foliovanta.com/{publicSlug}/{username}`. `publicSlug` is an immutable, unique, sequence-generated numeric `User` id (allocated by a Postgres sequence; a DB trigger forbids changes); `username` is an editable, normalized, **non-unique** URL label. Identity is resolved only by `publicSlug`, never by username. The legacy `/p/{slug}` route and stale usernames 307-redirect to the canonical URL when publicly visible. No wildcard DNS/TLS is required. Unknown/invalid slugs return real 404; unpublished/suspended/deleted cases return a uniform 404, not 200 with an error page. Do not reveal private moderation reasons to anonymous visitors.
 
 **Cache design:** Published snapshot IDs are immutable and cache-friendly; active slug→version resolution is mutable and security-sensitive. Use cache keys scoped by slug/version and an explicit invalidation policy. Authentication-only routes must be private/no-store as appropriate. For moderation, define a bounded stale-content exposure objective and test it across CDN, Next.js data caches, and browsers. Do not cache personalized private data at a public edge. For suspended content, an origin visibility check and/or short-lived active-pointer cache may be required; measure impact on latency.
 
@@ -505,7 +505,7 @@ Required runbooks: failed deployment, database unavailable, migration failure, C
 | Free quotas | Open | Entry, media, snapshot, payload caps | Product/engineering |
 | Minimum publish fields | Open | Exact validation rules | Product/design |
 | Template token matrix | Open | Supported overrides by template | Design/engineering |
-| Slug changes | Proposed immutable MVP | Product confirmation | Product |
+| Identity vs. username | Resolved (M3) | publicSlug immutable; username freely editable with 307 canonical redirects | — |
 | Account deletion retention | Open | Legal and recovery periods | Product/legal/security |
 | Consent and analytics retention | Open | Jurisdiction/privacy rules | Product/legal |
 | Background worker | Open | Provider + operational design | Engineering/DevOps |

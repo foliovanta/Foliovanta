@@ -43,7 +43,8 @@ This specification defines Foliovanta's PostgreSQL persistence model, Prisma rep
 |---|---|---|
 | IDs | PostgreSQL UUID (`@default(uuid()) @db.Uuid`) | Avoid user-facing sequential identifiers |
 | Timestamps | `timestamptz(3)` in UTC | `createdAt`, `updatedAt`, lifecycle timestamps |
-| Slugs | Canonical lowercase ASCII with globally unique index | Immutable after allocation for MVP; reserve system names |
+| Public identity (M3) | Numeric `User.publicSlug` (sequence-generated, `@unique`, immutable via DB trigger) + editable non-unique `User.username` | URL is `/{publicSlug}/{username}`; see `docs/decisions/M3-URL-IDENTITY.md` |
+| Internal portfolio slug | Server-generated, globally unique index, kept for legacy snapshots/links | No longer user-chosen or part of the public URL |
 | One portfolio MVP | Transactionally guarded active-portfolio entitlement | **No permanent unique `ownerId`** preventing future multi-portfolio support |
 | Content | Relational draft; JSON for constrained configuration | No numbered columns or arbitrary raw HTML |
 | Revisions | One `Portfolio.draftRevision` | Every draft/content/design mutation increments it |
@@ -105,13 +106,15 @@ This specification defines Foliovanta's PostgreSQL persistence model, Prisma rep
 
 ### 3.1 `User`
 
-`id UUID PK`, `clerkUserId TEXT UNIQUE NOT NULL`, `primaryEmail TEXT?`, `displayName TEXT?`, `role UserRole DEFAULT USER`, `status UserStatus DEFAULT ACTIVE`, `createdAt`, `updatedAt`, `deletedAt?`. Suggested roles: `USER`, `ADMIN`, `SUPER_ADMIN`; statuses: `ACTIVE`, `SUSPENDED`, `DELETION_PENDING`, `DELETED`. Store the minimum necessary identity data; never store Clerk passwords or session tokens. Normalize email for lookup; do **not** assume email is globally immutable or a trustworthy principal key. The unique Clerk ID is the external identity mapping.
+`id UUID PK`, `clerkUserId TEXT UNIQUE NOT NULL`, `publicSlug BIGINT UNIQUE NOT NULL`, `username TEXT NOT NULL`, `primaryEmail TEXT?`, `displayName TEXT?`, `role UserRole DEFAULT USER`, `status UserStatus DEFAULT ACTIVE`, `createdAt`, `updatedAt`, `deletedAt?`. Suggested roles: `USER`, `ADMIN`, `SUPER_ADMIN`; statuses: `ACTIVE`, `SUSPENDED`, `DELETION_PENDING`, `DELETED`. Store the minimum necessary identity data; never store Clerk passwords or session tokens. Normalize email for lookup; do **not** assume email is globally immutable or a trustworthy principal key. The unique Clerk ID is the external identity mapping.
+
+**Public identity (M3):** `publicSlug` is the immutable, globally unique, numeric public identifier — allocated by a Postgres sequence (`users_public_slug_seq`, `DEFAULT nextval(...)`), never reused, with a `BEFORE UPDATE` trigger forbidding changes. Serialized as a string at API boundaries. `username` is an editable, normalized, **non-unique** URL label (presentation only — never an identity/authorization key), seeded from display name → account name → default and freely edited thereafter. Enumerating `publicSlug` reveals nothing non-public (same visibility predicate; uniform 404).
 
 **Provisioning:** verified Clerk webhook upsert plus idempotent first-authenticated-request reconciliation. An internal suspended/deleted account remains blocked even with a valid Clerk session. Role changes require privileged service + audit.
 
 ### 3.2 `Portfolio`
 
-`id`, `ownerId`, `slug`, `title?`, `publicationStatus`, `moderationStatus`, `draftRevision BIGINT DEFAULT 0`, `activeVersionId?`, `nextVersionNumber INT DEFAULT 1`, `createdAt`, `updatedAt`, `lastDraftSavedAt?`, `publishedAt?`, `deletedAt?`. Public URL derived from slug and deployment domain; never store untrusted full host as authority. Slug allocation is canonical, globally unique and retries on unique collision. `ownerId` indexed, not unique.
+`id`, `ownerId`, `slug`, `title?`, `publicationStatus`, `moderationStatus`, `draftRevision BIGINT DEFAULT 0`, `activeVersionId?`, `nextVersionNumber INT DEFAULT 1`, `createdAt`, `updatedAt`, `lastDraftSavedAt?`, `publishedAt?`, `deletedAt?`. **Public URL identity is the owner's `User.publicSlug` + `username` (M3), not this slug.** `Portfolio.slug` is now an internal, **server-generated**, globally unique identifier (random-suffixed so it stays unique even against soft-deleted rows; retries on unique collision), kept only for legacy published snapshots/links and no longer user-chosen. Never store an untrusted full host as authority. `ownerId` indexed, not unique.
 
 **Publication status:** `DRAFT`, `PUBLISHED`, `UNPUBLISHED`. **Moderation status:** `CLEAR`, `UNDER_REVIEW`, `SUSPENDED`. `UNDER_REVIEW` public visibility is a product policy to finalize; baseline is keep existing published content available unless explicitly suspended. Owner `ACTIVE`, portfolio `PUBLISHED`, moderation not `SUSPENDED`, nondeleted portfolio, and active version are all required for public eligibility. Use a single service predicate for public resolution and moderation invalidation.
 
@@ -604,6 +607,8 @@ Prisma alone does not express every required invariant. Maintain reviewed, versi
 
 ### 5.1 Checks and canonical slug
 
+> M3: `Portfolio.slug` is now server-generated and internal (the public URL uses `User.publicSlug`/`username`). The format CHECK below still applies to the generated slug; the reserved-name note no longer affects users (they do not choose slugs).
+
 ```sql
 ALTER TABLE "Portfolio"
   ADD CONSTRAINT portfolio_revision_nonnegative CHECK ("draftRevision" >= 0),
@@ -738,7 +743,7 @@ Use partial indexes only when query plans justify them, e.g. `OutboxEvent(status
 |---|---|---|
 | User lookup after Clerk auth | `clerkUserId = ?` | Unique Clerk ID |
 | User portfolios | `ownerId = ? AND deletedAt IS NULL ORDER BY createdAt` | `(ownerId, createdAt)`; partial index if justified |
-| Public hostname lookup | `slug = ?` | Unique slug |
+| Public portfolio lookup (M3) | owner `publicSlug = ?` + visibility predicate | Unique `users.publicSlug`; legacy `/p/{slug}` still resolves by unique `portfolios.slug` |
 | Portfolio editor load | `id = ? AND ownerId = ?` | PK + owner index; authorize before relations |
 | Content list | `portfolioId = ? ORDER BY position, id` | `(portfolioId, position, id)` |
 | Versions | `portfolioId = ? ORDER BY versionNumber DESC` | Unique `(portfolioId, versionNumber)` |

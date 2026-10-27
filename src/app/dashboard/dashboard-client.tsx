@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/ui/field";
+import { publicPortfolioPath } from "@/lib/urls/public-url";
 import {
   type ApiError,
   type PortfolioSummary,
@@ -126,18 +127,30 @@ function PortfolioCard({ portfolio }: { portfolio: PortfolioSummary }) {
           {portfolio.publicationStatus}
         </span>
       </div>
-      <Link
-        href={`/editor/${portfolio.id}/profile`}
-        className="inline-flex min-h-11 items-center justify-center rounded-md bg-indigo-600 px-4 text-sm font-medium text-white transition hover:bg-indigo-700 focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2 focus-visible:outline-none dark:focus-visible:ring-offset-zinc-950"
-      >
-        Edit
-      </Link>
+      <div className="flex shrink-0 items-center gap-2">
+        {portfolio.publicationStatus === "PUBLISHED" &&
+          portfolio.moderationStatus !== "SUSPENDED" && (
+            <a
+              href={publicPortfolioPath(portfolio.publicSlug, portfolio.username)}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="inline-flex min-h-11 items-center justify-center rounded-md border border-zinc-300 px-4 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:outline-none dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            >
+              View live
+            </a>
+          )}
+        <Link
+          href={`/editor/${portfolio.id}/profile`}
+          className="inline-flex min-h-11 items-center justify-center rounded-md bg-indigo-600 px-4 text-sm font-medium text-white transition hover:bg-indigo-700 focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2 focus-visible:outline-none dark:focus-visible:ring-offset-zinc-950"
+        >
+          Edit
+        </Link>
+      </div>
     </div>
   );
 }
 
 function CreatePortfolioForm({ onCreated, empty }: { onCreated: () => void; empty?: boolean }) {
-  const [slug, setSlug] = useState("");
   const [title, setTitle] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -147,10 +160,9 @@ function CreatePortfolioForm({ onCreated, empty }: { onCreated: () => void; empt
     setSubmitting(true);
     setError(null);
 
-    const result = await createPortfolio({
-      slug: slug.trim(),
-      ...(title.trim() ? { title: title.trim() } : {}),
-    });
+    // The public URL is /{publicSlug}/{username}; the user no longer chooses a
+    // slug. Only an optional title is collected; the rest is set server-side.
+    const result = await createPortfolio(title.trim() ? { title: title.trim() } : {});
 
     setSubmitting(false);
 
@@ -172,19 +184,10 @@ function CreatePortfolioForm({ onCreated, empty }: { onCreated: () => void; empt
           {empty ? "Create your portfolio" : "New portfolio"}
         </h2>
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-          Pick a URL slug. You can add content once it&apos;s created.
+          Give it a title to get started. You can set your public URL once it&apos;s created.
         </p>
       </div>
 
-      <TextField
-        id="portfolio-slug"
-        label="Slug"
-        value={slug}
-        onChange={(event) => setSlug(event.target.value)}
-        placeholder="ada-lovelace"
-        required
-        autoComplete="off"
-      />
       <TextField
         id="portfolio-title"
         label="Title (optional)"
@@ -201,7 +204,7 @@ function CreatePortfolioForm({ onCreated, empty }: { onCreated: () => void; empt
       )}
 
       <div>
-        <Button type="submit" disabled={submitting || slug.trim().length === 0}>
+        <Button type="submit" disabled={submitting}>
           {submitting ? "Creating…" : "Create portfolio"}
         </Button>
       </div>

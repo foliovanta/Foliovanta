@@ -2,6 +2,7 @@ import "server-only";
 
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db/prisma";
+import { deriveUsername } from "@/lib/utils/username";
 
 type SupportedEventType = "user.created" | "user.updated" | "user.deleted";
 
@@ -170,12 +171,15 @@ export async function synchronizeClerkWebhook(
           create: {
             clerkUserId,
             ...profile,
+            // Seed the URL username from the account name (publicSlug is
+            // DB-generated). Set only on create so later edits are never clobbered.
+            username: deriveUsername(profile.name),
             clerkEventTimestamp: eventTimestamp,
           },
           update: {
             ...profile,
             clerkEventTimestamp: eventTimestamp,
-            // Never overwrite role, status, or deletion tombstones.
+            // Never overwrite role, status, deletion tombstones, or username.
           },
         });
       }

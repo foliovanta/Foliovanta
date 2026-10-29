@@ -9,15 +9,22 @@ vi.mock("@/lib/db/prisma", () => ({ prisma: {} }));
 vi.mock("@/lib/publishing/publish-service", () => ({
   publishPortfolio: vi.fn(),
   unpublishPortfolio: vi.fn(),
+  rollbackPortfolio: vi.fn(),
 }));
 
 import { POST as publishRoute } from "@/app/api/portfolios/[portfolioId]/publish/route";
+import { POST as rollbackRoute } from "@/app/api/portfolios/[portfolioId]/rollback/route";
 import { POST as unpublishRoute } from "@/app/api/portfolios/[portfolioId]/unpublish/route";
-import { publishPortfolio, unpublishPortfolio } from "@/lib/publishing/publish-service";
+import {
+  publishPortfolio,
+  rollbackPortfolio,
+  unpublishPortfolio,
+} from "@/lib/publishing/publish-service";
 
 const authMock = vi.mocked(auth);
 const publishMock = vi.mocked(publishPortfolio);
 const unpublishMock = vi.mocked(unpublishPortfolio);
+const rollbackMock = vi.mocked(rollbackPortfolio);
 
 const PID = randomUUID();
 const params = (portfolioId: string) => ({ params: Promise.resolve({ portfolioId }) });
@@ -142,6 +149,81 @@ describe("POST /api/portfolios/[portfolioId]/unpublish", () => {
   it("404 when not found", async () => {
     unpublishMock.mockResolvedValue({ ok: false, error: "NOT_FOUND" });
     const res = await unpublishRoute(new Request("http://t", { method: "POST" }), params(PID));
+    expect(res.status).toBe(404);
+  });
+});
+
+describe("POST /api/portfolios/[portfolioId]/rollback", () => {
+  beforeEach(() => {
+    authMock.mockReset();
+    rollbackMock.mockReset();
+    authMock.mockResolvedValue({ userId: "user_1" } as never);
+  });
+
+  const body = { versionNumber: 1, expectedActiveVersionNumber: 2 };
+
+  it("401 when unauthenticated", async () => {
+    authMock.mockResolvedValue({ userId: null } as never);
+    const res = await rollbackRoute(post(body), params(PID));
+    expect(res.status).toBe(401);
+    expect(rollbackMock).not.toHaveBeenCalled();
+  });
+
+  it("400 for a missing/invalid version number", async () => {
+    const res = await rollbackRoute(post({ expectedActiveVersionNumber: 2 }), params(PID));
+    expect(res.status).toBe(400);
+    await expect(res.json()).resolves.toMatchObject({ error: { code: "VALIDATION_ERROR" } });
+  });
+
+  it("200 with the restored version on success", async () => {
+    rollbackMock.mockResolvedValue({
+      ok: true,
+      activeVersionNumber: 1,
+      publicationStatus: "PUBLISHED",
+      publishedAt: new Date("2026-01-02T03:04:05.000Z"),
+      changed: true,
+    });
+    const res = await rollbackRoute(post(body), params(PID));
+    expect(res.status).toBe(200);
+    expect(rollbackMock).toHaveBeenCalledWith("user_1", PID, 1, 2);
+    await expect(res.json()).resolves.toEqual({
+      data: {
+        activeVersionNumber: 1,
+        publicationStatus: "PUBLISHED",
+        publishedAt: "2026-01-02T03:04:05.000Z",
+        changed: true,
+      },
+    });
+  });
+
+  it("409 on a concurrency conflict", async () => {
+    rollbackMock.mockResolvedValue({ ok: false, error: "ROLLBACK_CONFLICT" });
+    const res = await rollbackRoute(post(body), params(PID));
+    expect(res.status).toBe(409);
+    await expect(res.json()).resolves.toMatchObject({ error: { code: "ROLLBACK_CONFLICT" } });
+  });
+
+  it("409 when the portfolio is not published", async () => {
+    rollbackMock.mockResolvedValue({ ok: false, error: "NOT_PUBLISHED" });
+    const res = await rollbackRoute(post(body), params(PID));
+    expect(res.status).toBe(409);
+  });
+
+  it("422 when the target can't be rendered", async () => {
+    rollbackMock.mockResolvedValue({ ok: false, error: "TARGET_UNRENDERABLE" });
+    const res = await rollbackRoute(post(body), params(PID));
+    expect(res.status).toBe(422);
+  });
+
+  it("403 when suspended", async () => {
+    rollbackMock.mockResolvedValue({ ok: false, error: "PORTFOLIO_SUSPENDED" });
+    const res = await rollbackRoute(post(body), params(PID));
+    expect(res.status).toBe(403);
+  });
+
+  it("404 when the target version doesn't exist", async () => {
+    rollbackMock.mockResolvedValue({ ok: false, error: "TARGET_NOT_FOUND" });
+    const res = await rollbackRoute(post(body), params(PID));
     expect(res.status).toBe(404);
   });
 });

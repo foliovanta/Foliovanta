@@ -18,6 +18,24 @@ export type TemplateKey = (typeof TEMPLATE_KEYS)[number];
 const DEFAULT_TEMPLATE_KEY: TemplateKey = "minimal";
 const DEFAULT_TEMPLATE_VERSION = "1.0.0";
 
+// The current published version of each template. Single source of truth used by
+// the registry (supported versions), template selection (what to persist), and
+// the builder default. Bump a template's version here when its snapshot
+// requirements change, and add the old version to the registry's supported list.
+export const CURRENT_TEMPLATE_VERSION: Record<TemplateKey, string> = {
+  minimal: "1.0.0",
+  professional: "1.0.0",
+  creative: "1.0.0",
+};
+
+// Whether a published snapshot's template can still be rendered: a known key at
+// its current version. Used to HIDE (not blank-render) a snapshot whose template
+// version is no longer supported. Pure — no React/registry import.
+export function isTemplateVersionSupported(templateKey: string, templateVersion: string): boolean {
+  if (!(TEMPLATE_KEYS as readonly string[]).includes(templateKey)) return false;
+  return templateVersion === CURRENT_TEMPLATE_VERSION[templateKey as TemplateKey];
+}
+
 // Canonical section registry (BACKEND_SCHEMA.md §3.4), in default order. Kept
 // here so the builder stays free of the server-only sections module; a unit
 // test asserts it stays in sync with the server registry.

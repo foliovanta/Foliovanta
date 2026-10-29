@@ -1,6 +1,8 @@
 // Browser-side helpers for the private portfolio API. Authorization lives on
 // the server; these just call the endpoints and normalize the response.
 
+import type { DesignConfig } from "@/lib/design/config";
+
 export type ApiError = {
   status: number;
   code: string;
@@ -457,10 +459,13 @@ export type ActiveVersionMeta = {
   templateVersion: string;
 };
 
+export type TemplateKey = "minimal" | "professional" | "creative";
+
 export type PublishStatus = {
   slug: string;
   publicSlug: string;
   username: string;
+  templateKey: string;
   publicationStatus: "DRAFT" | "PUBLISHED" | "UNPUBLISHED";
   moderationStatus: "CLEAR" | "UNDER_REVIEW" | "SUSPENDED";
   revision: string;
@@ -517,9 +522,90 @@ export function listVersions(portfolioId: string, cursor?: number) {
   return request<VersionPage>(`/api/portfolios/${portfolioId}/versions${query}`);
 }
 
+export type RollbackResult = {
+  activeVersionNumber: number;
+  publicationStatus: "PUBLISHED";
+  publishedAt: string;
+  changed: boolean;
+};
+
+export function rollbackPortfolio(
+  portfolioId: string,
+  versionNumber: number,
+  expectedActiveVersionNumber: number,
+) {
+  return request<RollbackResult>(`/api/portfolios/${portfolioId}/rollback`, {
+    method: "POST",
+    body: JSON.stringify({ versionNumber, expectedActiveVersionNumber }),
+  });
+}
+
 export function updateUsername(portfolioId: string, username: string) {
   return request<{ username: string }>(`/api/portfolios/${portfolioId}/username`, {
     method: "PATCH",
     body: JSON.stringify({ username }),
   });
+}
+
+export function updateTemplate(
+  portfolioId: string,
+  templateKey: TemplateKey,
+  expectedRevision: string,
+) {
+  return request<{ templateKey: TemplateKey; revision: string }>(
+    `/api/portfolios/${portfolioId}/template`,
+    { method: "PATCH", body: JSON.stringify({ templateKey, expectedRevision }) },
+  );
+}
+
+export type DesignState = { design: DesignConfig; templateKey: TemplateKey; revision: string };
+
+export function getDesign(portfolioId: string) {
+  return request<DesignState>(`/api/portfolios/${portfolioId}/design`);
+}
+
+export function updateDesign(portfolioId: string, design: DesignConfig, expectedRevision: string) {
+  return request<{ design: DesignConfig; revision: string }>(
+    `/api/portfolios/${portfolioId}/design`,
+    { method: "PATCH", body: JSON.stringify({ design, expectedRevision }) },
+  );
+}
+
+// --- Media (profile avatar / project cover) -------------------------------
+
+export type MediaPurpose = "PROFILE_AVATAR" | "PROJECT_COVER";
+export type MediaUploadAuth = {
+  url: string;
+  method: "PUT";
+  headers: Record<string, string>;
+  expiresInSeconds: number;
+};
+export type MediaAttachTarget = { kind: "avatar" } | { kind: "project"; projectId: string };
+
+export function initiateMediaUpload(
+  portfolioId: string,
+  input: { purpose: MediaPurpose; contentType: string; byteSize: number },
+) {
+  return request<{ assetId: string; upload: MediaUploadAuth }>(
+    `/api/portfolios/${portfolioId}/media`,
+    { method: "POST", body: JSON.stringify(input) },
+  );
+}
+
+export function completeMediaUpload(portfolioId: string, assetId: string) {
+  return request<{ status: string; width: number; height: number; contentType: string }>(
+    `/api/portfolios/${portfolioId}/media/${assetId}/complete`,
+    { method: "POST", body: JSON.stringify({}) },
+  );
+}
+
+// assetId: null detaches (remove image).
+export function attachMedia(
+  portfolioId: string,
+  input: { expectedRevision: string; target: MediaAttachTarget; assetId: string | null },
+) {
+  return request<{ assetId: string | null; revision: string }>(
+    `/api/portfolios/${portfolioId}/media/attach`,
+    { method: "PATCH", body: JSON.stringify(input) },
+  );
 }

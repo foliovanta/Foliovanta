@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "prisma generate && next dev",
+    "postinstall": "prisma generate",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -15,6 +16,9 @@
     "test:integration": "vitest run --project integration --no-file-parallelism",
     "test:e2e": "playwright test",
     "test:webhook": "tsx scripts/test-clerk-webhook.ts",
+    "admin:grant-role": "tsx scripts/admin/grant-role.ts",
+    "verify:upstash": "tsx scripts/security/verify-upstash.ts",
+    "verify:turnstile": "tsx scripts/security/verify-turnstile.ts",
     "db:generate": "prisma generate",
     "db:validate": "prisma validate",
     "db:migrate:dev": "prisma migrate dev",
@@ -23,6 +27,8 @@
     "db:studio": "prisma studio"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1156.0",
+    "@aws-sdk/s3-request-presigner": "^3.1156.0",
     "@clerk/nextjs": "^7.9.18",
     "@prisma/adapter-pg": "7.10.1",
     "@prisma/client": "7.10.1",
@@ -54,6 +60,7 @@
     "prettier": "^3.9.10",
     "prettier-plugin-tailwindcss": "^0.8.1",
     "prisma": "7.10.1",
+    "sharp": "^0.35.5",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
     "typescript": "^5",

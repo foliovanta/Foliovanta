@@ -174,7 +174,10 @@ Unique `userId`; `maxPortfolios`, `maxProjects`, `maxExperiences`, `maxEducation
 - `Feedback`: `id`, `userId?`, `portfolioId?`, `category`, `message`, `status`, `createdAt`, `resolvedAt?`, `assignedToId?`; restrict PII and rate limit submissions.
 - `AbuseReport`: `id`, `portfolioId`, `reporterUserId?`, `reason`, `details?`, `status`, `createdAt`, `resolvedAt?`; anonymous reports may be permitted with abuse protection.
 - `ModerationAction`: `id`, `portfolioId`, `actorId`, `action`, `reason`, `previousStatus`, `nextStatus`, `createdAt`; append-only.
-- `AuditLog`: `id`, `actorId?`, `action`, `resourceType`, `resourceId?`, `metadata JSONB`, `requestId?`, `createdAt`; append-only, sensitive fields redacted. Consider partitioning only after measured volume.
+- `AuditLog`: **implemented (M6.1)** as `id`, `actorUserId?` (bare UUID, no FK — the actor id survives account deletion), `action`, `targetType?`, `targetId?`, `outcome` (SUCCESS/FAILURE/DENIED), `correlationId?`, `metadata? JSONB`, `createdAt`; append-only (DB trigger blocks UPDATE/DELETE), sensitive metadata keys redacted before insert. Consider partitioning only after measured volume. See `docs/decisions/M6-1-ADMIN-RBAC.md`.
+- `ModerationCommand`: **implemented (M6.3)** durable idempotency ledger — `id`, unique `idempotencyKey`, `actorUserId`, `operation`, `targetType`, `targetId`, `fingerprint` (SHA-256 of the canonical payload), `result JSONB`, `createdAt`. Write-once; a repeat key + payload replays the stored result, a key reused with a different payload is rejected. See `docs/decisions/M6-3-MODERATION.md`.
+- `Feedback`: **implemented (M6.4)** — authenticated creator product feedback (`userId`, optional owned `portfolioId`, `category`, `message`, `status` OPEN→IN_REVIEW→RESOLVED→CLOSED, `assigneeId?`, `resolutionNote?`, status/resolved timestamps). Private; never public. See `docs/decisions/M6-4-FEEDBACK-REPORTS.md`.
+- `AbuseReport`: **implemented (M6.4)** — report against a publicly-eligible portfolio (`portfolioId`, optional `reporterUserId` SetNull-on-delete, `reason`, `details?`, `status` OPEN→IN_REVIEW→{DISMISSED|ACTIONED}, `resolutionNote?`, `enforcementRef?`). Reporter identity never disclosed; no raw IP stored; ACTIONED requires real M6.3 enforcement. See `docs/decisions/M6-4-FEEDBACK-REPORTS.md`.
 
 Moderation actions must update portfolio state and write audit/outbox entries in the same transaction. Cached public content requires a reliable revocation mechanism; eventual cache invalidation alone is insufficient for suspension.
 
@@ -552,18 +555,32 @@ model ModerationAction {
   @@index([portfolioId, createdAt])
 }
 
+// IMPLEMENTED (M6.1) — the live model differs from the earlier draft above:
+//   - `actorUserId` is a bare UUID, NOT a FK. An audit record is a permanent
+//     fact: the actor id is preserved verbatim after account deletion, and the
+//     append-only trigger can block every UPDATE/DELETE without a FK
+//     ON DELETE SET NULL fighting it. (`AuditLog` has no `actor` relation, and
+//     `User` has no `auditLogs` back-relation.)
+//   - fields renamed to `targetType`/`targetId`/`correlationId`; added an
+//     `outcome` enum (SUCCESS/FAILURE/DENIED) for denied/failed attempts.
+//   - immutability is enforced by a DB trigger (blocks UPDATE and DELETE), per §5.
+// See docs/decisions/M6-1-ADMIN-RBAC.md.
+enum AuditOutcome { SUCCESS FAILURE DENIED }
+
 model AuditLog {
   id String @id @default(uuid()) @db.Uuid
-  actorId String? @db.Uuid
-  actor User? @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+  actorUserId String? @db.Uuid
   action String
-  resourceType String
-  resourceId String?
-  metadata Json @default("{}") @db.JsonB
-  requestId String?
-  createdAt DateTime @default(now()) @db.Timestamptz(3)
-  @@index([actorId, createdAt])
-  @@index([resourceType, resourceId, createdAt])
+  targetType String?
+  targetId String?
+  outcome AuditOutcome @default(SUCCESS)
+  correlationId String?
+  metadata Json? @db.JsonB
+  createdAt DateTime @default(now())
+  @@index([actorUserId, createdAt])
+  @@index([action, createdAt])
+  @@index([targetType, targetId])
+  @@map("audit_logs")
 }
 
 model BusinessEvent {

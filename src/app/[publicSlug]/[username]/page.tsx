@@ -3,7 +3,9 @@ import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 
 import { PortfolioRenderer } from "@/components/public/portfolio-renderer";
+import { ReportPortfolio } from "@/components/public/report-portfolio";
 import { getPublicPortfolioByUserSlug } from "@/lib/publishing/public-read";
+import type { PublishedSnapshot } from "@/lib/publishing/snapshot";
 import { publicPortfolioPath, publicPortfolioUrl } from "@/lib/urls/public-url";
 
 export const runtime = "nodejs";
@@ -43,9 +45,33 @@ export async function generateMetadata({
     title,
     description,
     alternates: { canonical },
+    // og:image / twitter:image are supplied automatically by the colocated
+    // opengraph-image route.
     openGraph: { title, description, url: canonical, type: "profile" },
+    twitter: { card: "summary_large_image", title, description },
     robots: { index: true, follow: true },
   };
+}
+
+// Conservative schema.org: only the published name, canonical URL, and an
+// optional description from the published headline/bio. No invented employers,
+// education, or social profiles. Escaped so it can't break out of the <script>.
+function buildPersonJsonLd(profile: PublishedSnapshot["profile"], canonical: string): string {
+  const description = (profile.headline ?? profile.bio ?? "")
+    ?.replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 300);
+  const data = {
+    "@context": "https://schema.org",
+    "@type": "ProfilePage",
+    mainEntity: {
+      "@type": "Person",
+      name: profile.displayName,
+      url: canonical,
+      ...(description ? { description } : {}),
+    },
+  };
+  return JSON.stringify(data).replace(/</g, "\\u003c");
 }
 
 export default async function PublicPortfolioPage({
@@ -67,5 +93,16 @@ export default async function PublicPortfolioPage({
     redirect(publicPortfolioPath(result.publicSlug, result.username));
   }
 
-  return <PortfolioRenderer snapshot={result.snapshot} />;
+  const jsonLd = buildPersonJsonLd(
+    result.snapshot.profile,
+    publicPortfolioUrl(result.publicSlug, result.username),
+  );
+
+  return (
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd }} />
+      <PortfolioRenderer snapshot={result.snapshot} />
+      <ReportPortfolio publicSlug={result.publicSlug} />
+    </>
+  );
 }

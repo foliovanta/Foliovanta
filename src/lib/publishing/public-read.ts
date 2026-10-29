@@ -2,9 +2,11 @@ import "server-only";
 
 import { prisma } from "@/lib/db/prisma";
 import { isReservedPortfolioSlug, normalizePortfolioSlug } from "@/lib/utils/slug";
+import { PUBLICLY_VISIBLE_PORTFOLIO_WHERE } from "@/lib/publishing/visibility";
 import {
   type PublishedSnapshot,
   SNAPSHOT_SCHEMA_VERSION,
+  isTemplateVersionSupported,
   publishedSnapshotSchema,
 } from "@/lib/publishing/snapshot";
 
@@ -32,15 +34,11 @@ const NOT_FOUND = { ok: false, error: "NOT_FOUND" } as const;
 // so real values always pass; this just rejects junk before touching the DB.
 const PUBLIC_SLUG_PATTERN = /^[1-9][0-9]{0,18}$/;
 
-// Shared visibility predicate: a portfolio is publicly readable only when it is
-// published, not moderated off, not soft-deleted, has an active version, and is
-// owned by an active account. Every non-visible case collapses to NOT_FOUND.
-const publiclyVisibleWhere = {
-  deletedAt: null,
-  publicationStatus: "PUBLISHED",
-  moderationStatus: { not: "SUSPENDED" },
-  activeVersionId: { not: null },
-} as const;
+// Shared visibility predicate (single source of truth in publishing/visibility):
+// a portfolio is publicly readable only when it is published, not moderated off,
+// not soft-deleted, has an active version, and is owned by an active account.
+// Every non-visible case collapses to NOT_FOUND.
+const publiclyVisibleWhere = PUBLICLY_VISIBLE_PORTFOLIO_WHERE;
 
 const activeVersionSelect = {
   owner: { select: { publicSlug: true, username: true } },
@@ -75,6 +73,21 @@ function toPublicResult(portfolio: PortfolioRow | null): PublicPortfolioResult {
     return NOT_FOUND;
   }
 
+  // An unsupported template version must NOT blank-render a 200 — hide it with a
+  // uniform NOT_FOUND (the route then returns a controlled 404 + noindex).
+  if (
+    !isTemplateVersionSupported(
+      parsed.data.portfolio.templateKey,
+      parsed.data.portfolio.templateVersion,
+    )
+  ) {
+    console.error("Public portfolio uses an unsupported template version", {
+      templateKey: parsed.data.portfolio.templateKey,
+      templateVersion: parsed.data.portfolio.templateVersion,
+    });
+    return NOT_FOUND;
+  }
+
   return {
     ok: true,
     snapshot: parsed.data,
@@ -106,6 +119,35 @@ export async function getPublicPortfolioByUserSlug(
   });
 
   return toPublicResult(portfolio);
+}
+
+export type IndexablePortfolio = {
+  publicSlug: string;
+  username: string;
+  lastModified: Date | null;
+};
+
+/**
+ * Lists currently publicly-visible portfolios for the sitemap. Uses the same
+ * visibility predicate as the public read but selects ONLY the identity +
+ * timestamps — no snapshot is loaded (no N+1), so it scales to large counts.
+ */
+export async function listIndexablePortfolios(limit = 50_000): Promise<IndexablePortfolio[]> {
+  const rows = await prisma.portfolio.findMany({
+    where: { ...publiclyVisibleWhere, owner: { status: "ACTIVE" } },
+    select: {
+      publishedAt: true,
+      updatedAt: true,
+      owner: { select: { publicSlug: true, username: true } },
+    },
+    orderBy: { publishedAt: "desc" },
+    take: limit,
+  });
+  return rows.map((row) => ({
+    publicSlug: row.owner.publicSlug.toString(),
+    username: row.owner.username,
+    lastModified: row.publishedAt ?? row.updatedAt,
+  }));
 }
 
 /**

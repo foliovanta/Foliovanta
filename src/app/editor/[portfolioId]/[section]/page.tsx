@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 
+import { DesignEditor } from "./design-editor";
 import { EducationEditor } from "./education-editor";
 import { ExperienceEditor } from "./experience-editor";
 import { ProfileEditor } from "./profile-editor";
@@ -37,6 +38,10 @@ export default async function EditorSectionPage({
 
   if (section === "sections") {
     return <SectionsEditor portfolioId={portfolioId} />;
+  }
+
+  if (section === "design") {
+    return <DesignEditor portfolioId={portfolioId} />;
   }
 
   if (section === "publish") {

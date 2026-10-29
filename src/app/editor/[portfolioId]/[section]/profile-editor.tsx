@@ -11,6 +11,7 @@ import {
   updateProfile,
 } from "@/lib/api/portfolios-client";
 import { useEditorGuard } from "../editor-shell";
+import { ImageUploadField } from "./image-upload-field";
 
 type Form = {
   displayName: string;
@@ -58,6 +59,7 @@ export function ProfileEditor({ portfolioId }: { portfolioId: string }) {
   const [loadState, setLoadState] = useState<"loading" | "error" | "ready">("loading");
   const [loadError, setLoadError] = useState<ApiError | null>(null);
   const [form, setForm] = useState<Form>(EMPTY_FORM);
+  const [avatarAssetId, setAvatarAssetId] = useState<string | null>(null);
   const [revision, setRevision] = useState("0");
   const [status, setStatus] = useState<SaveStatus>({ kind: "idle" });
   const [dirty, setLocalDirty] = useState(false);
@@ -73,11 +75,22 @@ export function ProfileEditor({ portfolioId }: { portfolioId: string }) {
   const applyServer = useCallback(
     (profile: ProfileDraft, nextRevision: string) => {
       setForm(toForm(profile));
+      setAvatarAssetId(profile.avatarAssetId);
       setRevision(nextRevision);
       markDirty(false);
     },
     [markDirty],
   );
+
+  // Avatar attach/remove bumps the draft revision out of band; sync it (and the
+  // displayed avatar) without discarding the user's unsaved text edits.
+  const reloadMedia = async () => {
+    const result = await getProfile(portfolioId);
+    if (result.ok) {
+      setRevision(result.data.revision);
+      setAvatarAssetId(result.data.profile.avatarAssetId);
+    }
+  };
 
   useEffect(() => {
     let active = true;
@@ -206,6 +219,21 @@ export function ProfileEditor({ portfolioId }: { portfolioId: string }) {
           {status.message}
         </p>
       )}
+
+      <ImageUploadField
+        label="Profile photo"
+        shape="circle"
+        purpose="PROFILE_AVATAR"
+        portfolioId={portfolioId}
+        target={{ kind: "avatar" }}
+        currentAssetId={avatarAssetId}
+        getRevision={() => revision}
+        onAttached={(rev, assetId) => {
+          setRevision(rev);
+          setAvatarAssetId(assetId);
+        }}
+        onConflict={() => void reloadMedia()}
+      />
 
       <TextField
         id="displayName"

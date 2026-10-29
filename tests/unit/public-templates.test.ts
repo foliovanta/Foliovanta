@@ -1,29 +1,41 @@
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("next/font/google", () => ({
-  Fraunces: () => ({ variable: "font-fraunces", className: "font-fraunces" }),
-}));
+// All three templates load a Google font at module scope; stub them so the
+// registry can be imported in jsdom without network/font resolution.
+vi.mock("next/font/google", () => {
+  const stub = () => ({ variable: "font-stub", className: "font-stub" });
+  return { Fraunces: stub, Inter: stub, Space_Grotesk: stub, Source_Serif_4: stub };
+});
 
 import { isRenderable, resolveTemplate } from "@/components/public/templates";
+import { TEMPLATE_KEYS } from "@/lib/publishing/snapshot";
 
 describe("template registry", () => {
-  it("resolves the Minimal template without a fallback flag", () => {
-    const { template, isFallback } = resolveTemplate("minimal");
-    expect(template.key).toBe("minimal");
-    expect(isFallback).toBe(false);
+  it("resolves every registry key to its own template, no fallback", () => {
+    for (const key of TEMPLATE_KEYS) {
+      const { template, isFallback } = resolveTemplate(key);
+      expect(template.key).toBe(key);
+      expect(isFallback).toBe(false);
+    }
   });
 
-  it("flags an explicit fallback for unbuilt templates (not silent)", () => {
-    const professional = resolveTemplate("professional");
-    expect(professional.template.key).toBe("minimal");
-    expect(professional.isFallback).toBe(true);
-    expect(resolveTemplate("creative").isFallback).toBe(true);
+  it("registers exactly minimal, professional, and creative", () => {
+    expect([...TEMPLATE_KEYS]).toEqual(["minimal", "professional", "creative"]);
   });
 
-  it("reports schema- and template-version renderability", () => {
-    const { template } = resolveTemplate("minimal");
-    expect(isRenderable(template, "1.0.0", 1)).toBe(true);
-    expect(isRenderable(template, "2.0.0", 1)).toBe(false); // unsupported template version
-    expect(isRenderable(template, "1.0.0", 2)).toBe(false); // unsupported schema version
+  it("reports schema- and template-version renderability per template", () => {
+    for (const key of TEMPLATE_KEYS) {
+      const { template } = resolveTemplate(key);
+      expect(isRenderable(template, "1.0.0", 1)).toBe(true);
+      expect(isRenderable(template, "2.0.0", 1)).toBe(false); // unsupported template version
+      expect(isRenderable(template, "1.0.0", 2)).toBe(false); // unsupported schema version
+    }
+  });
+
+  it("flags a fallback only for a key outside the registry (never cross-template)", () => {
+    // Cast an unknown key the schema would normally reject.
+    const result = resolveTemplate("legacy" as never);
+    expect(result.isFallback).toBe(true);
+    expect(result.template.key).toBe("minimal");
   });
 });

@@ -11,6 +11,8 @@
 
 ---
 
+
+
 ## 1. Executive implementation strategy
 
 Foliovanta is a production multi-tenant portfolio-builder SaaS. A creator signs up, completes guided onboarding, edits structured portfolio content, chooses among **Minimal / Professional / Creative** templates, customizes validated design tokens, previews changes, and explicitly publishes an SEO-friendly portfolio at `foliovanta.com/{publicSlug}/{username}` (M3 path-based URL; see `docs/decisions/M3-URL-IDENTITY.md`). Public pages serve **immutable published snapshots**, not editable drafts. Super Admin manages users, moderation, abuse reports, feedback, and audit history.
@@ -30,6 +32,8 @@ Foliovanta is a production multi-tenant portfolio-builder SaaS. A creator signs 
 7. Production data is recoverable via an exercised backup/restore procedure, and deployments have a tested rollback path.
 8. No production release without blocking security, accessibility, integration, and E2E gates passing.
 
+
+
 ### 1.2 Scope boundary
 
 **MVP in scope:** marketing and template discovery; Clerk auth; one portfolio per user; resumable/skippable onboarding; creator dashboard; structured editor for Profile, About, Experience, Education, Projects, Skills, Certifications, Contact/Social; section visibility/reorder; three responsive templates; controlled appearance options; autosave and preview; explicit publish, republish, unpublish, version history/rollback capability; path-based public URLs at `foliovanta.com/{publicSlug}/{username}` (M3); SEO/sharing; R2 media; Super Admin moderation/feedback/reports/audit; GA4 and durable business events; security/operability/testing.
@@ -38,38 +42,48 @@ Foliovanta is a production multi-tenant portfolio-builder SaaS. A creator signs 
 
 ---
 
+
+
 ## 2. Source-of-truth documents and change control
 
-| Document | Owns | Required update when changed |
-|---|---|---|
-| `PRD.md` | Product behavior, personas, scope, business rules, release acceptance | Any user-facing feature/scope change |
-| `TRD.md` | Architecture, security and NFR requirements | Technology, boundaries, infrastructure, security or performance decision |
-| `APP_FLOW.md` | Routes, navigation, state transitions, errors | Any changed redirect, user journey or screen state |
-| `UI_UX_DESIGN_BRIEF.md` | Design patterns, responsive behavior, accessibility, screen specifications | Any changed visual/interaction contract |
-| `BACKEND_SCHEMA.md` | Domain models, DB invariants, transaction protocols | Any schema, ownership, persistence, retention change |
-| `IMPLEMENTATION_PLAN.md` | Work sequencing, milestones, ownership, tests, release gates | Dependencies, delivery priorities or release strategy change |
-| `docs/decisions/ADR-*.md` | Accepted decision, alternatives, consequences, triggers | Material architecture decisions |
-| `docs/api/API_CONTRACTS.md` (to create) | Endpoint DTOs, errors, auth, idempotency, pagination | Any API contract change |
-| `docs/security/THREAT_MODEL.md` (to create) | Threats, trust boundaries, mitigations | New sensitive flow or trust boundary |
-| `docs/operations/RUNBOOKS.md` (to create) | Incident, restore, migration, cache revocation and rollback | Any operational process change |
+
+| Document                                    | Owns                                                                       | Required update when changed                                             |
+| ------------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `PRD.md`                                    | Product behavior, personas, scope, business rules, release acceptance      | Any user-facing feature/scope change                                     |
+| `TRD.md`                                    | Architecture, security and NFR requirements                                | Technology, boundaries, infrastructure, security or performance decision |
+| `APP_FLOW.md`                               | Routes, navigation, state transitions, errors                              | Any changed redirect, user journey or screen state                       |
+| `UI_UX_DESIGN_BRIEF.md`                     | Design patterns, responsive behavior, accessibility, screen specifications | Any changed visual/interaction contract                                  |
+| `BACKEND_SCHEMA.md`                         | Domain models, DB invariants, transaction protocols                        | Any schema, ownership, persistence, retention change                     |
+| `IMPLEMENTATION_PLAN.md`                    | Work sequencing, milestones, ownership, tests, release gates               | Dependencies, delivery priorities or release strategy change             |
+| `docs/decisions/ADR-*.md`                   | Accepted decision, alternatives, consequences, triggers                    | Material architecture decisions                                          |
+| `docs/api/API_CONTRACTS.md` (to create)     | Endpoint DTOs, errors, auth, idempotency, pagination                       | Any API contract change                                                  |
+| `docs/security/THREAT_MODEL.md` (to create) | Threats, trust boundaries, mitigations                                     | New sensitive flow or trust boundary                                     |
+| `docs/operations/RUNBOOKS.md` (to create)   | Incident, restore, migration, cache revocation and rollback                | Any operational process change                                           |
+
 
 **Change process:** Proposal → affected document/ADR updates → owner/reviewer approval → implementation and test updates → release notes. Do not silently promote “proposed” into “confirmed.” Version template schemas and public snapshot schemas independently of UI releases.
 
 ---
 
+
+
 ## 3. Delivery organization and working agreements
+
+
 
 ### 3.1 Accountability roles
 
-| Role | Responsibility | Can be combined? |
-|---|---|---|
-| Product owner (PO) | MVP scope, publish readiness, quotas, consent, policy decisions | Yes |
-| Technical lead (TL) | Architecture, ADRs, design reviews, quality gates | Yes |
-| Frontend engineer (FE) | UI, editor, forms, client state, accessibility | Yes |
-| Backend engineer (BE) | Domain services, Prisma, transactions, APIs, media | Yes |
-| Platform/DevOps (OPS) | Vercel/Neon/R2/Clerk integration, CI/CD, observability, recovery | Yes |
-| Design (UX) | Figma, design tokens, templates, user testing | Yes |
-| QA/security reviewer (QA/SEC) | Automated test plans, adversarial tests, security sign-off | Prefer independent review |
+
+| Role                          | Responsibility                                                   | Can be combined?          |
+| ----------------------------- | ---------------------------------------------------------------- | ------------------------- |
+| Product owner (PO)            | MVP scope, publish readiness, quotas, consent, policy decisions  | Yes                       |
+| Technical lead (TL)           | Architecture, ADRs, design reviews, quality gates                | Yes                       |
+| Frontend engineer (FE)        | UI, editor, forms, client state, accessibility                   | Yes                       |
+| Backend engineer (BE)         | Domain services, Prisma, transactions, APIs, media               | Yes                       |
+| Platform/DevOps (OPS)         | Vercel/Neon/R2/Clerk integration, CI/CD, observability, recovery | Yes                       |
+| Design (UX)                   | Figma, design tokens, templates, user testing                    | Yes                       |
+| QA/security reviewer (QA/SEC) | Automated test plans, adversarial tests, security sign-off       | Prefer independent review |
+
 
 **Single-engineer reality:** A solo builder can implement most work, but plan external review for auth/tenant isolation, publish concurrency, legal/privacy policy, and production operations. Estimates below are *effort ranges*, not calendar promises.
 
@@ -81,6 +95,8 @@ Foliovanta is a production multi-tenant portfolio-builder SaaS. A creator signs 
 - Privacy/security implications reviewed; design provided for visible work.
 - No blocking unresolved P0 product decision.
 
+
+
 ### 3.3 Definition of Done (DoD)
 
 - Code merged with peer review; strict typecheck, lint, formatting and build pass.
@@ -90,6 +106,8 @@ Foliovanta is a production multi-tenant portfolio-builder SaaS. A creator signs 
 - Logs/metrics/alerts and support diagnostics added for critical flows.
 - Relevant docs, API schemas, ADRs, and runbooks updated.
 - Staging acceptance and rollback considerations reviewed. A deployed feature is not automatically “done.”
+
+
 
 ### 3.4 Branch and environment conventions (proposed)
 
@@ -101,22 +119,26 @@ Foliovanta is a production multi-tenant portfolio-builder SaaS. A creator signs 
 
 ---
 
+
+
 ## 4. Workstream map and critical path
 
-| ID | Workstream | Primary outputs | Depends on | Priority |
-|---|---|---|---|---|
-| WS-00 | Decisions, design and specifications | ADRs, UI tokens, API contracts, threat model | Existing docs | P0 |
-| WS-01 | Infrastructure feasibility spikes | Working wildcard/TLS, Clerk, Neon, R2, caching experiments | WS-00 partial | P0 |
-| WS-02 | Repository and CI foundation | App scaffold, modules, quality gates, staging deploy | WS-01 key results | P0 |
-| WS-03 | Database and domain integrity | Validated Prisma schema, SQL migrations, concurrency tests | WS-00, WS-01 Neon | P0 |
-| WS-04 | Identity and authorization | Clerk, internal users, RBAC, secure bootstrap | WS-02, WS-03 | P0 |
-| WS-05 | Marketing, design system and onboarding | Public marketing, auth flows, onboarding, dashboard | WS-02, WS-04, UX | P0 |
-| WS-06 | Editor and draft engine | CRUD, autosave, conflicts, preview projection | WS-03–05 | P0 |
-| WS-07 | Media and design/template engine | R2 pipeline, token system, 3 templates | WS-01, WS-03, WS-06 | P0 |
-| WS-08 | Publishing and public delivery | Snapshots, subdomains, SEO, rollback/unpublish | WS-01, WS-03, WS-06–07 | P0 |
-| WS-09 | Super Admin, moderation and feedback | Admin screens, reports, audit trail | WS-03–04, WS-08 | P0 |
-| WS-10 | Analytics, notifications and operations | Events, Sentry, jobs, alerts, runbooks | WS-02 onward | P0 |
-| WS-11 | Hardening and production launch | Security, load, recovery, accessibility, release | All MVP workstreams | P0 |
+
+| ID    | Workstream                              | Primary outputs                                               | Depends on             | Priority |
+| ----- | --------------------------------------- | ------------------------------------------------------------- | ---------------------- | -------- |
+| WS-00 | Decisions, design and specifications    | ADRs, UI tokens, API contracts, threat model                  | Existing docs          | P0       |
+| WS-01 | Infrastructure feasibility spikes       | Working wildcard/TLS, Clerk, Neon, R2, caching experiments    | WS-00 partial          | P0       |
+| WS-02 | Repository and CI foundation            | App scaffold, modules, quality gates, staging deploy          | WS-01 key results      | P0       |
+| WS-03 | Database and domain integrity           | Validated Prisma schema, SQL migrations, concurrency tests    | WS-00, WS-01 Neon      | P0       |
+| WS-04 | Identity and authorization              | Clerk, internal users, RBAC, secure bootstrap                 | WS-02, WS-03           | P0       |
+| WS-05 | Marketing, design system and onboarding | Public marketing, auth flows, onboarding, dashboard           | WS-02, WS-04, UX       | P0       |
+| WS-06 | Editor and draft engine                 | CRUD, autosave, conflicts, preview projection                 | WS-03–05               | P0       |
+| WS-07 | Media and design/template engine        | R2 pipeline, token system, 3 templates                        | WS-01, WS-03, WS-06    | P0       |
+| WS-08 | Publishing and public delivery          | Snapshots, path-based public routing, SEO, rollback/unpublish | WS-01, WS-03, WS-06–07 | P0       |
+| WS-09 | Super Admin, moderation and feedback    | Admin screens, reports, audit trail                           | WS-03–04, WS-08        | P0       |
+| WS-10 | Analytics, notifications and operations | Events, Sentry, jobs, alerts, runbooks                        | WS-02 onward           | P0       |
+| WS-11 | Hardening and production launch         | Security, load, recovery, accessibility, release              | All MVP workstreams    | P0       |
+
 
 **Critical path:** Feasibility + P0 decisions → DB/auth → editor concurrency → snapshot/template compatibility → public delivery/moderation → security/recovery/launch. Design, marketing UI, analytics plumbing, and observability can proceed in parallel once interfaces are defined.
 
@@ -140,7 +162,11 @@ flowchart TD
  K --> L
 ```
 
+
+
 ---
+
+
 
 ## 5. Phase 0 — Close blocking decisions and prove infrastructure
 
@@ -158,22 +184,28 @@ flowchart TD
 - [ ] **P0-01.08 [TL/SEC]** Complete threat model and cross-tenant permission matrix. **Evidence:** threat register and test IDs.
 - [ ] **P0-01.09 [OPS/PO]** Propose numeric SLO, RTO, RPO, public cache revocation objective, and performance budgets; approve after PoC/load baseline. **Evidence:** operational objectives document.
 
+
+
 ### P0-02 — Blocking platform spikes
 
-| Spike ID | Experiment | Required evidence / pass condition | Failure response |
-|---|---|---|---|
-| SP-01 | Vercel wildcard DNS + TLS | Real generated slug HTTPS works; marketing/app/portfolio hosts route correctly; unknown host rejected | Revisit hostname architecture/hosting ADR |
-| SP-02 | Clerk sessions and hostname boundaries | Login/logout, callback, SSR auth, app/admin authorization, no session leakage to public hosts | Rework auth/host boundary before editor |
-| SP-03 | Neon + Prisma connections | Pooled runtime requests and direct migration connection work under representative concurrency | Revise pooling/deployment strategy |
-| SP-04 | R2 signed upload and delivery | Short-lived upload, size/type/ownership checks, completion verification, image delivery tested | Revise media pipeline |
-| SP-05 | Warm-cache publish/unpublish/suspend | Correct version and bounded revocation time across edge caches | Change caching/eligibility architecture |
-| SP-06 | DB concurrency | CAS autosave, duplicate mutation, parallel publish, active-version FK and immutability constraints pass | Correct schema/transaction protocol |
-| SP-07 | Snapshot renderer compatibility | Old version still renders after simulated template/schema upgrade | Define migration/compatibility adapter |
-| SP-08 | Monitoring and recovery | Controlled error generates trace/alert; isolated DB restore works | Block launch until remediated |
+
+| Spike ID | Experiment                             | Required evidence / pass condition                                                                      | Failure response                          |
+| -------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| SP-01    | Vercel wildcard DNS + TLS              | Real generated slug HTTPS works; marketing/app/portfolio hosts route correctly; unknown host rejected   | Revisit hostname architecture/hosting ADR |
+| SP-02    | Clerk sessions and hostname boundaries | Login/logout, callback, SSR auth, app/admin authorization, no session leakage to public hosts           | Rework auth/host boundary before editor   |
+| SP-03    | Neon + Prisma connections              | Pooled runtime requests and direct migration connection work under representative concurrency           | Revise pooling/deployment strategy        |
+| SP-04    | R2 signed upload and delivery          | Short-lived upload, size/type/ownership checks, completion verification, image delivery tested          | Revise media pipeline                     |
+| SP-05    | Warm-cache publish/unpublish/suspend   | Correct version and bounded revocation time across edge caches                                          | Change caching/eligibility architecture   |
+| SP-06    | DB concurrency                         | CAS autosave, duplicate mutation, parallel publish, active-version FK and immutability constraints pass | Correct schema/transaction protocol       |
+| SP-07    | Snapshot renderer compatibility        | Old version still renders after simulated template/schema upgrade                                       | Define migration/compatibility adapter    |
+| SP-08    | Monitoring and recovery                | Controlled error generates trace/alert; isolated DB restore works                                       | Block launch until remediated             |
+
 
 **Exit gate G0:** SP-01 through SP-06 demonstrated or architecture amended with a passing replacement design. SP-07 and SP-08 must pass before public launch; run them early enough to avoid rework. Record command/configuration, environment, screenshots/logs, result, and ADR link in `docs/spikes/`.
 
 ---
+
+
 
 ## 6. Phase 1 — Repository, quality baseline, and environment setup
 
@@ -194,6 +226,8 @@ flowchart TD
 
 ---
 
+
+
 ## 7. Phase 2 — Database schema and domain integrity (WP-02 completion)
 
 **Goal:** Convert `BACKEND_SCHEMA.md` into executable, tested Prisma/SQL migrations, not just a conceptual ERD.
@@ -211,26 +245,32 @@ flowchart TD
 - [ ] **DB-09 [BE/OPS]** Define expand/contract migrations, separate runtime/migration DB privileges, production migration order, backups, rollback compatibility, and seed fixtures.
 - [ ] **DB-10 [QA/SEC]** Execute migration and constraints against disposable PostgreSQL; test all referential actions, delete behavior, unique keys and check constraints.
 
+
+
 ### 7.2 Transaction tests (mandatory)
 
-| Test ID | Scenario | Required result |
-|---|---|---|
-| DB-T01 | Two tabs save expected revision N | One commits N+1; other gets conflict; no lost data |
-| DB-T02 | Save commits, response lost, same mutation retried | Original result returned; no duplicate change |
-| DB-T03 | Same mutation ID with different payload | Rejected; no silent replay of wrong payload |
-| DB-T04 | Parallel first-portfolio creates | MVP entitlement enforced atomically |
-| DB-T05 | Parallel quota-consuming uploads | No quota over-allocation |
-| DB-T06 | Concurrent publish requests | Unique ordered versions; pointer consistent; idempotent replay |
-| DB-T07 | Publish while draft mutates | Snapshot reflects exactly one confirmed revision |
-| DB-T08 | Active version from another portfolio | DB rejects cross-portfolio pointer |
-| DB-T09 | Asset from another portfolio | Ownership/association violation rejected |
-| DB-T10 | Update/delete immutable version | Application/runtime DB privileges reject |
-| DB-T11 | Soft delete/suspend/unpublish | Public eligibility fails; audit preserved per policy |
-| DB-T12 | Schema migration and rollback compatibility | Old/new app versions operate safely during rollout |
+
+| Test ID | Scenario                                           | Required result                                                |
+| ------- | -------------------------------------------------- | -------------------------------------------------------------- |
+| DB-T01  | Two tabs save expected revision N                  | One commits N+1; other gets conflict; no lost data             |
+| DB-T02  | Save commits, response lost, same mutation retried | Original result returned; no duplicate change                  |
+| DB-T03  | Same mutation ID with different payload            | Rejected; no silent replay of wrong payload                    |
+| DB-T04  | Parallel first-portfolio creates                   | MVP entitlement enforced atomically                            |
+| DB-T05  | Parallel quota-consuming uploads                   | No quota over-allocation                                       |
+| DB-T06  | Concurrent publish requests                        | Unique ordered versions; pointer consistent; idempotent replay |
+| DB-T07  | Publish while draft mutates                        | Snapshot reflects exactly one confirmed revision               |
+| DB-T08  | Active version from another portfolio              | DB rejects cross-portfolio pointer                             |
+| DB-T09  | Asset from another portfolio                       | Ownership/association violation rejected                       |
+| DB-T10  | Update/delete immutable version                    | Application/runtime DB privileges reject                       |
+| DB-T11  | Soft delete/suspend/unpublish                      | Public eligibility fails; audit preserved per policy           |
+| DB-T12  | Schema migration and rollback compatibility        | Old/new app versions operate safely during rollout             |
+
 
 **Gate G2:** All P0 gaps in `BACKEND_SCHEMA.md` §13 resolved, migration reproducible on clean database, required constraints inspected in PostgreSQL, DB-T01–DB-T12 pass. Do not start production data ingestion with an unvalidated schema.
 
 ---
+
+
 
 ## 8. Phase 3 — Identity, sessions, roles, and account lifecycle
 
@@ -238,7 +278,9 @@ flowchart TD
 
 - [ ] **AUTH-01 [BE/FE]** Integrate Clerk sign-up/sign-in, Google and email/password, email verification, redirects, sign-out, session expiration and reauthentication UX.
 - [ ] **AUTH-02 [BE]** Implement internal user provisioning and idempotent verified Clerk webhooks, with reconciliation for webhook delays/failures.
-- [ ] **AUTH-03 [BE]** Implement `getCurrentActor()` and centralized permission policies for USER/ADMIN/SUPER_ADMIN; deny-by-default for missing/disabled accounts.
+
+- [~] **AUTH-03 [BE]** Implement `getCurrentActor()` and centralized permission policies for USER/ADMIN/SUPER_ADMIN; deny-by-default for missing/disabled accounts. **(M6.1)** Centralized permission policy implemented as `resolveAdminActor`/`requirePermission` + the pure `can()` matrix, deny-by-default, DB-authoritative, rejecting missing/suspended/deletion-pending accounts. (Owner-scoped user resolution remains `resolveActiveUser`; there is no single `getCurrentActor` name — the two resolvers cover the user and admin surfaces respectively.)
+
 - [ ] **AUTH-04 [BE]** Authorize every resource query/mutation by ownership and status; route/proxy checks are convenience only, not security boundaries.
 - [ ] **AUTH-05 [SEC]** Implement CSRF/origin policy for cookie-authenticated mutations, session fixation/cross-host checks, webhook signature verification and rate limits.
 - [ ] **AUTH-06 [FE]** Handle loading, logged-out, unverified, suspended, disabled, deleted and account-switch states without private-data flash.
@@ -249,6 +291,8 @@ flowchart TD
 
 ---
 
+
+
 ## 9. Phase 4 — Marketing, onboarding, and creator dashboard
 
 **Goal:** Deliver the first coherent authenticated creator journey before the complex editor.
@@ -258,6 +302,8 @@ flowchart TD
 - [ ] **MKT-01 [FE/UX]** Landing `/` with product value, CTA, accessibility and responsive behavior.
 - [ ] **MKT-02 [FE]** Template gallery `/templates` and details `/templates/[templateId]` with safe example content and working preview.
 - [ ] **MKT-03 [FE/BE]** Marketing SEO metadata, canonical URLs, robots/sitemap rules, basic analytics consent wiring.
+
+
 
 ### Onboarding and dashboard
 
@@ -270,6 +316,8 @@ flowchart TD
 **Gate G4:** Creator can authenticate, initialize exactly one portfolio, resume onboarding and enter editor without duplicate records or losing progress.
 
 ---
+
+
 
 ## 10. Phase 5 — Structured editor, autosave and preview (critical path)
 
@@ -289,6 +337,8 @@ flowchart TD
 - [ ] **ED-10 [BE]** Read APIs, query key scoping, mutation invalidation and logout/account-switch cache isolation.
 - [ ] **ED-11 [QA]** Simulated slow/out-of-order responses, rapid typing, tab switching, duplicate requests, lost acknowledgment, offline reconnect, conflicts and publish barrier tests.
 
+
+
 ### Required editor state transitions
 
 `SAVED → DIRTY → SAVING → SAVED` is the happy path. The product must also implement `SAVING → DIRTY` (new edits during request), `SAVING → ERROR`, `SAVING → CONFLICT`, and `DIRTY/SAVING → OFFLINE` without losing local changes.
@@ -296,6 +346,8 @@ flowchart TD
 **Gate G5:** ED-11 passes against real PostgreSQL plus browser E2E; no silent data loss; the preview shows local edits; save acknowledgment never resets newer form state. Do not enable Publish until this gate passes.
 
 ---
+
+
 
 ## 11. Phase 6 — Media pipeline, template registry and design customization
 
@@ -308,6 +360,8 @@ flowchart TD
 - [ ] **MED-03 [BE/OPS]** Completion verification, actual file signature/size checks, image metadata, processing/variants, safe serving headers and content-type enforcement.
 - [ ] **MED-04 [BE]** Asset associations, published-version references, retention-aware garbage collection, orphan cleanup, idempotent delete jobs.
 - [ ] **MED-05 [QA/SEC]** Cross-user uploads, forged MIME, oversized/animated/problematic files, signed URL reuse, quota races, orphan recovery and media exposure tests.
+
+
 
 ### Templates and appearance
 
@@ -323,6 +377,8 @@ flowchart TD
 
 ---
 
+
+
 ## 12. Phase 7 — Publishing, public routing, SEO and rollback
 
 **Goal:** Public portfolios are consistent, fast, crawlable, and immediately controllable through explicit lifecycle actions.
@@ -330,32 +386,42 @@ flowchart TD
 - [ ] **PUB-01 [BE]** Publish-readiness validator: approved minimum fields, account verification, template support, media READY state, quota/size and schema validation.
 - [ ] **PUB-02 [FE/BE]** Publish barrier: flush pending edits, wait for acknowledgment, block unresolved conflicts, submit confirmed expected revision and idempotency key.
 - [ ] **PUB-03 [BE]** Transactional publish: authorize; lock/serialize per portfolio; read consistent draft; validate; create immutable snapshot; allocate version; update pointer; write audit + outbox; commit.
-- [ ] **PUB-04 [BE]** Idempotent republish and version history; rollback changes active pointer only; unpublish and moderation eligibility independent of draft.
-- [x] **PUB-05 [OPS/BE]** Path-based public routing `foliovanta.com/{publicSlug}/{username}` (M3); resolve by numeric `User.publicSlug`; 307 canonical redirect for stale usernames and legacy `/p/{slug}`; uniform 404 for non-public. No wildcard DNS.
+- [ ] **PUB-04 [BE]** Idempotent republish and version history; rollback changes active pointer only; unpublish and moderation eligibility independent of draft. **(M3.6)** `rollbackPortfolio` re-points `activeVersionId` only — never rewrites/deletes a snapshot; owner-scoped, requires currently-PUBLISHED (no silent republish of a private portfolio), honours moderation/suspension, optimistic concurrency on the expected active version, idempotent, and validates the target snapshot is renderable before the pointer moves. Draft (`draftRevision`/`nextVersionNumber`) is never touched. See `docs/decisions/M3-6-VERSION-HISTORY-ROLLBACK.md`.
+- [ ] **PUB-05 [OPS/BE]** Path-based public routing `foliovanta.com/{publicSlug}/{username}` (M3); resolve by numeric `User.publicSlug`; 307 canonical redirect for stale usernames and legacy `/p/{slug}`; uniform 404 for non-public. No wildcard DNS.
+  - *Reconciliation (M3):* this supersedes the earlier wildcard-subdomain architecture. The wildcard DNS/TLS feasibility items (WS-01, SP-01) and the "wildcard DNS/TLS unverified" launch NO-GO clause no longer apply to public-portfolio routing; cross-subdomain Clerk session risks are moot because auth and public pages share one origin. Other "subdomain" wording elsewhere in this plan is historical shorthand for this milestone. See `docs/decisions/M3-URL-IDENTITY.md`.
 - [ ] **PUB-06 [FE/BE]** SSR public renderer reads active snapshot only; no Clerk requirement for visitors; appropriate 404/unavailable status and noindex behavior.
-- [ ] **PUB-07 [BE/OPS]** Cache design with publication invalidation and bounded revocation for suspend/unpublish; never cache private editor data publicly.
-- [ ] **PUB-08 [FE/BE]** Next.js Metadata API, Open Graph/Twitter cards, canonical URLs (built from a validated `NEXT_PUBLIC_APP_URL`, pointing at the current username so renames don't duplicate-index), JSON-LD, sitemap, robots, Search Console readiness.
-- [ ] **PUB-09 [FE]** Private preview, readiness screen, publish success, version history/rollback UI per approved MVP scope.
-- [ ] **PUB-10 [QA/SEC]** Concurrent publish/edit, immutable version attempts, cache-warm suspension, stale content, invalid host, template upgrade, SEO and status-code tests.
 
-**Gate G7:** Full publish/republish/rollback/unpublish/suspend matrix passes with warmed caches; public content never exposes draft; Google-facing metadata/status behavior validated; public hosts work with real TLS.
+- [~] **PUB-07 [BE/OPS]** Cache design with publication invalidation and bounded revocation for suspend/unpublish; never cache private editor data publicly. **(M6.3)** Origin revocation is immediate and DB-authoritative: public page, legacy route, sitemap, OG image (fixed this milestone), and media proxy are all `force-dynamic`/`no-store` and re-check the shared visibility policy per request; private editor/draft surfaces are `no-store`. A proposed maximum-stale-exposure objective is documented. **Outstanding:** no CDN layer is configured, so bounded CDN/browser revocation is undesigned and unverified; needs staging evidence before the gate.
+
+- [ ] **PUB-08 [FE/BE]** Next.js Metadata API, Open Graph/Twitter cards, canonical URLs (built from a validated `NEXT_PUBLIC_APP_URL`, pointing at the current username so renames don't duplicate-index), JSON-LD, sitemap, robots, Search Console readiness.
+- [x] **PUB-09 [FE]** Private preview, readiness screen, publish success, version history/rollback UI per approved MVP scope. **(M3.6)** The publishing workspace's version history lists versions newest-first with a **Live** indicator, an owner-only **Preview** link per version (historical snapshot rendered in the private `/preview` frame, noindex/no-store), and **Roll back** on non-active versions behind an explicit confirmation, with conflict/unrenderable/error states.
+
+- [~] **PUB-10 [QA/SEC]** Concurrent publish/edit, immutable version attempts, cache-warm suspension, stale content, invalid host, template upgrade, SEO and status-code tests. **(M3.6)** Rollback/preview lifecycle covered by unit + DB-integration tests: pointer-move + public-read consistency, idempotency, optimistic-concurrency conflict, concurrent publish↔rollback serialization, unpublished/suspended/cross-owner/unrenderable guards, and owner-only historical preview. Cache-warm suspension and real-TLS/host cases remain outstanding (no CDN/live host in this environment). **(M6.3)** Suspension visibility is now enforced and tested at the origin across public page, legacy route, sitemap, OG, and media via the single shared policy; warmed-CDN suspension still needs staging evidence.
+
+**Gate G7:** Full publish/republish/rollback/unpublish/suspend matrix passes with warmed caches; public content never exposes draft; Google-facing metadata/status behavior validated; public hosts work with real TLS. **Partial (M3.6):** the publish/republish/rollback/unpublish/suspend state matrix is verified at the service + public-read layer, and rollback immediately changes the public page, metadata, OG image, JSON-LD and sitemap because all read the active-version pointer. Still outstanding for the gate: warmed-cache revocation and real-TLS/host verification (require a CDN and live hosting not available here).
 
 ---
+
+
 
 ## 13. Phase 8 — Super Admin, feedback and trust/safety
 
 **Goal:** The operator can investigate and mitigate abuse without bypassing tenant boundaries or losing auditability.
 
-- [ ] **ADM-01 [BE]** Server-enforced USER/ADMIN/SUPER_ADMIN policy matrix; no role trust from client UI; admin session and access logging.
-- [ ] **ADM-02 [FE/BE]** Admin overview `/admin`, users list/detail, portfolio list/detail, feedback queue, abuse report queue and audit log screens.
-- [ ] **ADM-03 [BE]** Moderation actions (suspend/reinstate/under-review per approved policy) with reason, actor, timestamp, audit record and public cache revocation.
-- [ ] **ADM-04 [BE/FE]** Feedback submission, abuse report validation, anti-spam controls, reporter privacy and status workflow.
-- [ ] **ADM-05 [BE]** Paginated/filterable admin queries, server-side permission checks, appropriate redaction of personal data.
-- [ ] **ADM-06 [QA/SEC]** Privilege escalation, admin direct URL, unauthorized API access, audit integrity, suspension race and report-spam tests.
+- [~] **ADM-01 [BE]** Server-enforced USER/ADMIN/SUPER_ADMIN policy matrix; no role trust from client UI; admin session and access logging. **(M6.1)** Deny-by-default permission matrix (`src/lib/auth/permissions.ts`) + server-only `resolveAdminActor`/`requirePermission` (`authorization.ts`): DB-authoritative role, ACTIVE-only, role/status re-read every request (mid-session revocation revokes access without sign-out), uniform 403. Denied authenticated attempts are audited. ADMIN vs SUPER_ADMIN distinguished (audit + role management are SUPER_ADMIN-only). See `docs/decisions/M6-1-ADMIN-RBAC.md`.
 
-**Gate G8:** Super Admin can safely moderate and review reports; regular users cannot access admin data/actions; audit history captures every privileged mutation; public suspension takes effect within approved bound.
+- [x] **ADM-02 [FE/BE]** Admin overview `/admin`, users list/detail, portfolio list/detail, feedback queue, abuse report queue and audit log screens. **(M6.1)** Responsive admin shell + privacy-safe Overview. **(M6.2)** Read-only **user directory + detail** (`/admin/users`, `/admin/users/[userId]`) and **portfolio directory + detail** (`/admin/portfolios`, `/admin/portfolios/[portfolioId]`) with search, filters, URL-backed state, keyset pagination, and all loading/empty/no-match/error states; backed by `GET /api/admin/{users,users/[id],portfolios,portfolios/[id]}`. See `docs/decisions/M6-2-USER-PORTFOLIO-MANAGEMENT.md`. **(M6.4)** Added the **feedback queue** (`/admin/feedback` + detail) and **abuse-report queue** (`/admin/reports` + detail) with filters, keyset pagination, triage controls, and reporter-identity-free report views. **(M6.5.1)** Added the SUPER_ADMIN-only **audit-log explorer** (`/admin/audit-logs` + `/admin/audit-logs/[auditId]`, `GET /api/admin/audit-logs[/:id]`): keyset list with action-family/actor/target/correlation/date filters, allowlist-sanitized metadata (never raw JSON), and links to related admin records — completing every ADM-02 admin interface. See `docs/decisions/M6-5-1-AUDIT-EXPLORER.md`. (G7/G8 remain open.)
+
+- [~] **ADM-03 [BE]** Moderation actions (suspend/reinstate/under-review per approved policy) with reason, actor, timestamp, audit record and public cache revocation. **(M6.3)** `moderatePortfolio` (SUSPEND/REINSTATE/MARK_UNDER_REVIEW/CLEAR_REVIEW) and `moderateAccount` (SUSPEND/REINSTATE): DB-authoritative permissions (`admin.portfolios.moderate` for ADMIN+, `admin.users.suspend` for SUPER_ADMIN only), `FOR UPDATE` locks, mandatory reasons for restrictive actions, optimistic concurrency, durable idempotency ledger (`moderation_commands`), and audit written in the same transaction. Public revocation is immediate because every public surface is `force-dynamic`/`no-store` (OG image fixed to `force-dynamic` this milestone) — a durable revocation descriptor is recorded in the audit event. UI confirmation panels on the user/portfolio detail pages. See `docs/decisions/M6-3-MODERATION.md`. **Not complete for the gate:** cache revocation is not staging/CDN-verified, and the shared rate limiter (Upstash) is implemented but not live-verified.
+- [~] **ADM-04 [BE/FE]** Feedback submission, abuse report validation, anti-spam controls, reporter privacy and status workflow. **(M6.4)** Creator feedback (`POST /api/feedback`, `/feedback` UI) and public abuse reports (`POST /api/reports`, discreet dialog on public portfolios, keyed by public slug) with Zod validation, size limits, fail-closed per-identity rate limits (hashed network id for anonymous), optional server-side Turnstile, neutral acknowledgments, reporter-privacy, duplicate handling, and no auto-moderation. Admin triage services + queues transition status transactionally with expected-state concurrency, idempotency ledger, and in-transaction audit; ACTIONED requires real M6.3 enforcement. See `docs/decisions/M6-4-FEEDBACK-REPORTS.md`. **(M6.5.2)** Anti-spam hardened to production grade: atomic distributed limiter with strict-mode fail-closed (no silent memory fallback), trusted/privacy-safe anonymous identity (IPv6 /64, salted hash, no raw IP), and Turnstile hardening (hostname pin, replay/expiry via Cloudflare single-use, strict-mode fail-closed when unconfigured). **Production-security acceptance BLOCKED:** Upstash + Turnstile implemented and deterministically tested but **not live-verified** (no credentials/deployment); opt-in `pnpm verify:upstash` / `verify:turnstile` provided. **Outstanding:** approved category/retention policy.
+- [~] **ADM-05 [BE]** Paginated/filterable admin queries, server-side permission checks, appropriate redaction of personal data. **(M6.1)** Permission checks, no-raw-model DTOs, correlation ids, the opaque-cursor contract, and audit redaction. **(M6.2)** Concrete paginated/filterable/searchable list queries with selective Prisma projections (no snapshot/draft JSON), deterministic keyset pagination with validated/tamper-proof cursors, email never exposed (only `hasEmail`), and server-enforced rate limiting (injectable; **in-memory only → production BLOCKED** until a shared store is wired). **(M6.3)** Added a shared Upstash rate-limit store implementation with read/mutation categories (mutation fail-closed). **(M6.4)** Feedback/report queues use the same keyset-pagination + selective-projection + reporter-identity-minimized pattern; anonymous intake is bucketed by a salted-hashed network id (no raw IP). **(M6.5.1)** Audit explorer adds allowlist metadata sanitization (no raw JSON, no secrets/bodies/identity) + two justified additive indexes `(createdAt, id)` and `(correlationId)`. **(M6.5.2)** Rate limiting hardened: atomic Lua `EVAL` store (no TTL-less keys), explicit security mode with **no in-memory fallback in strict/production** (writes fail closed when Upstash is absent), env-namespaced keys, trusted client IP (`x-real-ip` over spoofable XFF) with IPv6 /64 aggregation. See `docs/decisions/M6-5-2-PRODUCTION-SECURITY.md`. Remaining: **live-verify** Upstash against a real DB (opt-in `pnpm verify:upstash`, BLOCKED — no creds); trigram index if search volume grows.
+- [~] **ADM-06 [QA/SEC]** Privilege escalation, admin direct URL, unauthorized API access, audit integrity, suspension race and report-spam tests. **(M6.1)** Access matrix, vertical escalation, suspended/deletion-pending/missing-user denial, forged-role irrelevance, mid-session revocation, audit immutability, redaction. **(M6.2)** Extended: anonymous/USER direct-API denial on every directory/detail route, cross-owner inspection only via authorized admin services, no private-draft/snapshot leakage, query validation + cursor-tamper rejection, deterministic pagination (no dup/omission), rate-limit behavior, and that no privileged mutation endpoints were introduced. **(M6.4)** Report/feedback coverage added: anonymous-denied feedback, suspended-account denial, non-owned portfolio reference, dedup, neutral-ack across eligible/unknown/unpublished report targets, no auto-moderation, reporter-identity privacy, triage transition/idempotency/stale-state/audit-without-message, ACTIONED-requires-enforcement, Turnstile unconfigured/fail paths, and mid-session triage revocation. **(M6.5.1)** Audit-read coverage added: SUPER_ADMIN-allowed vs ADMIN/USER/anon/suspended/revoked-denied, stable keyset pagination across identical timestamps, filter correctness, metadata-allowlist redaction, append-only-trigger integrity, and reads-never-mutate. **(M6.5.2)** Security-services coverage added: atomic Lua store contract, store resolution by security mode (strict→no-fallback), read-fail-open vs write-fail-closed on store unavailability, spoofed-XFF resistance + IPv6 aggregation, Turnstile hostname/replay/missing-token paths, and strict-mode anonymous-report fail-closed (503). **(M6.3)** Suspension-race coverage now added: concurrent conflicting moderation serialized to one transition, idempotent retry + key-reuse conflict, stale-expected-state rejection, atomic state+audit commit, mutation rate-limit fail-closed, suspended-portfolio publish/rollback blocks, account suspension composing with public visibility, self/admin-target protection, and mid-session role revocation during a moderation session.
+
+**Gate G8 (OPEN — not complete):** Super Admin can safely moderate and review reports; regular users cannot access admin data/actions; audit history captures every privileged mutation; public suspension takes effect within approved bound. **M6.1 delivers only the RBAC/audit/shell foundation** (the "regular users cannot access admin data/actions" property is enforced and tested); moderation (M6.3) and the feedback/abuse-report workflows (M6.4) are now implemented and tested. **G8 still NOT complete:** the shared rate-limit store and Turnstile are not provisioned/live-verified, the public-suspension/cache bound lacks staging evidence, the audit-log review screen is unbuilt, and category/retention policies need sign-off. The feedback/report interfaces working does not close G8.
 
 ---
+
+
 
 ## 14. Phase 9 — Analytics, notifications, asynchronous work and observability
 
@@ -368,12 +434,16 @@ flowchart TD
 - [ ] **OBS-03 [BE]** Durable business events and outbox insertion within critical transactions; idempotent consumers and retry strategy.
 - [ ] **OBS-04 [PO/QA]** Verify GA4 against consent policy, event taxonomy and expected dashboard semantics; document that GA4 is not authoritative for business records.
 
+
+
 ### Notifications and background work
 
 - [ ] **JOB-01 [FE]** Sonner for transient messages; persistent inline autosave state for critical save feedback.
 - [ ] **JOB-02 [BE]** Clerk-managed authentication emails; introduce Resend + React Email only for approved transactional use cases.
 - [ ] **JOB-03 [BE/OPS]** Choose job runner (Inngest/Trigger.dev/other) based on actual outbox/media cleanup workloads; configure retries, idempotency, dead-letter visibility, rate limits and replay tooling.
 - [ ] **JOB-04 [QA]** Prove database commit survives provider outage; replay does not duplicate side effects; stuck jobs alert and recover.
+
+
 
 ### Monitoring and operations
 
@@ -387,7 +457,11 @@ flowchart TD
 
 ---
 
+
+
 ## 15. Phase 10 — Production hardening and launch
+
+
 
 ### 15.1 Security verification
 
@@ -397,6 +471,8 @@ flowchart TD
 - [ ] **SEC-04** Rate limits, bot controls and cost-abuse testing on signups, reports, uploads, public traffic and expensive APIs.
 - [ ] **SEC-05** Dependency vulnerability review, secret scanning, least-privilege cloud credentials, audit of production access.
 - [ ] **SEC-06** Privacy review: data export/deletion, retention, backup policy, consent, Terms/Privacy, support and incident contact.
+
+
 
 ### 15.2 Reliability and performance verification
 
@@ -408,6 +484,8 @@ flowchart TD
 - [ ] **REL-06** Accessibility audit (keyboard, focus, semantics, labels, color contrast, reduced motion, screen reader critical journeys) and supported browser/device matrix.
 - [ ] **REL-07** Verify historical published snapshots render after upgrade; no destructive template/schema deployment.
 
+
+
 ### 15.3 Launch sequence
 
 1. **Feature complete in staging:** All MVP features behind tested contracts, three templates, admin moderation, analytics/monitoring and release gates.
@@ -418,31 +496,37 @@ flowchart TD
 6. **Controlled rollout:** Invite a limited cohort, monitor error rate, auth, publish success, cache revocation, abuse and costs; expand only if healthy.
 7. **Post-launch review:** Incident/defect summary, actual performance and SLOs, cost and usage, prioritized backlog, ADR updates.
 
+
+
 ### 15.4 Hard launch blockers
 
 Production launch is **NO-GO** if any of the following remains true: wildcard DNS/TLS unverified; tenant isolation bypass; autosave data loss; non-atomic publishing; broken historical snapshots; suspended content publicly accessible beyond approved objective; unsafe media upload; admin RBAC bypass; unresolved critical/high security vulnerability without formal acceptance; failed required CI/E2E; untested backup restore; unknown deployment/migration rollback path; missing legal/privacy/consent approvals; missing production alert ownership.
 
 ---
 
+
+
 ## 16. API implementation inventory and contract sequencing
 
 The endpoint paths below are **proposed**, not finalized public interfaces. Exact DTOs belong in `docs/api/API_CONTRACTS.md` before implementation.
 
-| API family | Example routes | Auth/authorization | Key contract concern |
-|---|---|---|---|
-| Session/account | Clerk SDK routes, `/api/me` | Session, account state | Provisioning, logout, identity switching |
-| Onboarding | `/api/onboarding`, `/api/onboarding/complete` | Owner | Resumable/idempotent |
-| Portfolio | `/api/portfolios`, `/api/portfolios/[id]` | Owner/admin policy | One-portfolio entitlement, slug |
-| Draft | `/api/portfolios/[id]/draft` | Owner | Expected revision, mutation ID, 409 |
-| Content | `/api/portfolios/[id]/projects`, analogous sections | Owner | Stable IDs, ordering, quotas |
-| Design | `/api/portfolios/[id]/design` | Owner | Validated tokens/template version |
-| Media | `/api/media/uploads`, `/api/media/[id]` | Owner | Reservations, signed URL, verification |
-| Publish | `/api/portfolios/[id]/publish` | Owner | Revision barrier, idempotency, transaction |
-| Versions | `/api/portfolios/[id]/versions`, `/rollback` | Owner | Historical compatibility, pointer integrity |
-| Visibility | `/api/portfolios/[id]/unpublish` | Owner | Revocation bound |
-| Feedback/reports | `/api/feedback`, `/api/reports` | As policy allows | Spam controls, privacy |
-| Admin | `/api/admin/users`, `/api/admin/portfolios`, `/api/admin/reports` | Server-enforced admin role | Audit and redaction |
-| Webhooks | `/api/webhooks/clerk`, job callbacks | Verified signature | Replay protection and idempotency |
+
+| API family       | Example routes                                                    | Auth/authorization         | Key contract concern                        |
+| ---------------- | ----------------------------------------------------------------- | -------------------------- | ------------------------------------------- |
+| Session/account  | Clerk SDK routes, `/api/me`                                       | Session, account state     | Provisioning, logout, identity switching    |
+| Onboarding       | `/api/onboarding`, `/api/onboarding/complete`                     | Owner                      | Resumable/idempotent                        |
+| Portfolio        | `/api/portfolios`, `/api/portfolios/[id]`                         | Owner/admin policy         | One-portfolio entitlement, slug             |
+| Draft            | `/api/portfolios/[id]/draft`                                      | Owner                      | Expected revision, mutation ID, 409         |
+| Content          | `/api/portfolios/[id]/projects`, analogous sections               | Owner                      | Stable IDs, ordering, quotas                |
+| Design           | `/api/portfolios/[id]/design`                                     | Owner                      | Validated tokens/template version           |
+| Media            | `/api/media/uploads`, `/api/media/[id]`                           | Owner                      | Reservations, signed URL, verification      |
+| Publish          | `/api/portfolios/[id]/publish`                                    | Owner                      | Revision barrier, idempotency, transaction  |
+| Versions         | `/api/portfolios/[id]/versions`, `/rollback`                      | Owner                      | Historical compatibility, pointer integrity |
+| Visibility       | `/api/portfolios/[id]/unpublish`                                  | Owner                      | Revocation bound                            |
+| Feedback/reports | `/api/feedback`, `/api/reports`                                   | As policy allows           | Spam controls, privacy                      |
+| Admin            | `/api/admin/users`, `/api/admin/portfolios`, `/api/admin/reports` | Server-enforced admin role | Audit and redaction                         |
+| Webhooks         | `/api/webhooks/clerk`, job callbacks                              | Verified signature         | Replay protection and idempotency           |
+
 
 **Transport policy:** Server Components call domain services directly; client interactive reads/mutations use TanStack Query and typed native fetch to Route Handlers; simple Server Actions may be used selectively if they invoke the same services. Route Handlers do not own business logic.
 
@@ -450,24 +534,30 @@ The endpoint paths below are **proposed**, not finalized public interfaces. Exac
 
 ---
 
+
+
 ## 17. Test strategy and coverage matrix
 
-| Layer | Tool | Mandatory scope | Trigger |
-|---|---|---|---|
-| Static | TypeScript strict, ESLint, Prettier | Types, import boundaries, style | Every PR |
-| Unit | Vitest | Validators, token resolution, permission policies, snapshot builder, autosave reducer | Every PR |
-| Component | React Testing Library | Forms, save indicators, error/conflict states, accessible controls | Every PR touching UI |
-| API/service integration | Vitest + disposable PostgreSQL | Authz, constraints, transactions, idempotency, quotas | Every PR touching server/data |
-| Contract | Zod fixtures, API integration | DTOs, errors, version compatibility | Every API/schema change |
-| Browser E2E | Playwright | Signup/onboarding/editor/publish/public/admin critical paths | Required pre-merge or staging gate |
-| Accessibility | axe + manual screen reader/keyboard | Editor, onboarding, public templates, admin | Feature sign-off and pre-launch |
-| Security | Automated + manual adversarial cases | Tenant isolation, CSRF/XSS, upload, RBAC | Each security-sensitive slice and release |
-| Performance | Load and browser profiling | Public traffic, draft save, DB pool, image rendering | Before beta and launch |
-| Recovery | Isolated restore/deploy drills | DB/R2 reconciliation, rollback, stale cache | Before launch and periodically |
+
+| Layer                   | Tool                                 | Mandatory scope                                                                       | Trigger                                   |
+| ----------------------- | ------------------------------------ | ------------------------------------------------------------------------------------- | ----------------------------------------- |
+| Static                  | TypeScript strict, ESLint, Prettier  | Types, import boundaries, style                                                       | Every PR                                  |
+| Unit                    | Vitest                               | Validators, token resolution, permission policies, snapshot builder, autosave reducer | Every PR                                  |
+| Component               | React Testing Library                | Forms, save indicators, error/conflict states, accessible controls                    | Every PR touching UI                      |
+| API/service integration | Vitest + disposable PostgreSQL       | Authz, constraints, transactions, idempotency, quotas                                 | Every PR touching server/data             |
+| Contract                | Zod fixtures, API integration        | DTOs, errors, version compatibility                                                   | Every API/schema change                   |
+| Browser E2E             | Playwright                           | Signup/onboarding/editor/publish/public/admin critical paths                          | Required pre-merge or staging gate        |
+| Accessibility           | axe + manual screen reader/keyboard  | Editor, onboarding, public templates, admin                                           | Feature sign-off and pre-launch           |
+| Security                | Automated + manual adversarial cases | Tenant isolation, CSRF/XSS, upload, RBAC                                              | Each security-sensitive slice and release |
+| Performance             | Load and browser profiling           | Public traffic, draft save, DB pool, image rendering                                  | Before beta and launch                    |
+| Recovery                | Isolated restore/deploy drills       | DB/R2 reconciliation, rollback, stale cache                                           | Before launch and periodically            |
+
+
+
 
 ### Critical E2E scenarios
 
-- **E2E-01:** New visitor → sign up → verify → onboarding → dashboard → editor → publish → visit generated HTTPS subdomain.
+- **E2E-01:** New visitor → sign up → verify → onboarding → dashboard → editor → publish → visit the path-based public portfolio URL `foliovanta.com/{publicSlug}/{username}` over HTTPS (path-based routing, not a subdomain — see PUB-05).
 - **E2E-02:** Skip optional onboarding → resume later → publish readiness blocks only missing required fields.
 - **E2E-03:** Add/reorder/delete multiple entries → switch templates → content remains intact.
 - **E2E-04:** Rapid typing + slow network + navigation → latest acknowledged draft survives refresh.
@@ -485,56 +575,68 @@ The endpoint paths below are **proposed**, not finalized public interfaces. Exac
 
 ---
 
+
+
 ## 18. Milestones, estimates, and staffing assumptions
 
 **Estimation method:** Rough engineer-effort ranges for planning, **not** fixed delivery dates or quotations. They assume one experienced full-stack engineer familiar with Next.js, access to design decisions and service accounts, and reusable libraries. QA, security review, legal approvals, vendor delays, and design production can add elapsed time. Parallel work reduces calendar time but not total effort. Re-estimate after Phase 0 spikes and backlog refinement.
 
-| Milestone | Scope | Indicative engineering effort | Exit |
-|---|---|---:|---|
-| M0 | Decisions, API/schema contracts, infrastructure PoCs | 2–4 engineer-weeks | G0 |
-| M1 | Repo, CI, staging, schema and identity | 3–5 engineer-weeks | G1–G3 |
-| M2 | Marketing, onboarding, dashboard | 2–4 engineer-weeks | G4 |
-| M3 | Editor, autosave, content CRUD and preview | 4–7 engineer-weeks | G5 |
-| M4 | Media, three templates, design tokens | 4–7 engineer-weeks | G6 |
-| M5 | Publish, subdomains, SEO, rollback | 3–5 engineer-weeks | G7 |
-| M6 | Admin, moderation, analytics and jobs | 3–5 engineer-weeks | G8–G9 |
-| M7 | Security, accessibility, load, recovery, beta and launch | 3–6 engineer-weeks | Launch sign-off |
+
+| Milestone | Scope                                                    | Indicative engineering effort | Exit            |
+| --------- | -------------------------------------------------------- | ----------------------------- | --------------- |
+| M0        | Decisions, API/schema contracts, infrastructure PoCs     | 2–4 engineer-weeks            | G0              |
+| M1        | Repo, CI, staging, schema and identity                   | 3–5 engineer-weeks            | G1–G3           |
+| M2        | Marketing, onboarding, dashboard                         | 2–4 engineer-weeks            | G4              |
+| M3        | Editor, autosave, content CRUD and preview               | 4–7 engineer-weeks            | G5              |
+| M4        | Media, three templates, design tokens                    | 4–7 engineer-weeks            | G6              |
+| M5        | Publish, path-based public URLs, SEO, rollback           | 3–5 engineer-weeks            | G7              |
+| M6        | Admin, moderation, analytics and jobs                    | 3–5 engineer-weeks            | G8–G9           |
+| M7        | Security, accessibility, load, recovery, beta and launch | 3–6 engineer-weeks            | Launch sign-off |
+
 
 **Illustrative total:** ~24–43 engineer-weeks across engineering tasks, excluding significant custom visual design, legal/compliance effort, major infrastructure surprises and ongoing operations. This is a broad planning envelope, not a commitment. A solo engineer's elapsed timeline will likely be longer due to context switching, testing, reviews and vendor dependencies. Avoid deriving exact calendar dates until Phase 0 closes.
 
 ### Milestone demo artifacts
 
-| Milestone | Review artifact |
-|---|---|
-| M0 | ADR pack, tested platform spikes, approved P0 decisions |
-| M1 | Staging app, migrations, secure auth and CI reports |
-| M2 | Recorded new-user onboarding E2E and accessible dashboard |
-| M3 | Autosave/concurrency test report and editor demo |
-| M4 | Three template gallery with content-preservation/visual test report |
-| M5 | Live generated subdomain with publish/rollback/cache tests |
-| M6 | Admin moderation workflow, alerts, analytics event verification |
-| M7 | Signed go/no-go checklist, restore/rollback drill, controlled launch |
+
+| Milestone | Review artifact                                                      |
+| --------- | -------------------------------------------------------------------- |
+| M0        | ADR pack, tested platform spikes, approved P0 decisions              |
+| M1        | Staging app, migrations, secure auth and CI reports                  |
+| M2        | Recorded new-user onboarding E2E and accessible dashboard            |
+| M3        | Autosave/concurrency test report and editor demo                     |
+| M4        | Three template gallery with content-preservation/visual test report  |
+| M5        | Live path-based public portfolio with publish/rollback/cache tests   |
+| M6        | Admin moderation workflow, alerts, analytics event verification      |
+| M7        | Signed go/no-go checklist, restore/rollback drill, controlled launch |
+
 
 ---
+
+
 
 ## 19. Prioritized initial backlog (first implementation cycle)
 
 These are the first tickets to create. Do **not** begin complex UI work before the blocking architectural contracts and PoCs.
 
-| Order | Ticket | Priority | Dependency | Acceptance evidence |
-|---:|---|---|---|---|
-| 1 | P0-01.01–09: close product/technical P0 decisions | P0 | Existing docs | Signed decisions/ADRs |
-| 2 | SP-01: wildcard host/TLS proof | P0 | Domain/test host | HTTPS and routing logs |
-| 3 | SP-02: Clerk session/host proof | P0 | Test app | Session/role security tests |
-| 4 | SP-03: Neon/Prisma pool proof | P0 | DB credentials | Migration/concurrency report |
-| 5 | SP-04: R2 upload proof | P0 | R2 credentials | Signed upload validation report |
-| 6 | FND-01/03/07: repo, modules and CI | P0 | Key spikes | Clean CI + staging build |
-| 7 | DB-01/08/10: schema extraction and SQL constraints | P0 | P0 decisions | Migration + integrity tests |
-| 8 | DB-05/06: idempotency, quotas, media references | P0 | Schema | Parallel race tests |
-| 9 | AUTH-01–05: Clerk bootstrap and policy layer | P0 | DB, repo | Authz/adversarial tests |
-| 10 | ONB-01/02 and DASH-01: first creator slice | P0 | Auth | Signup-to-dashboard E2E |
-| 11 | ED-05/06/11: autosave coordinator and protocol | P0 | DB/API contracts | Concurrency/loss tests |
-| 12 | TPL-01/PUB-03: versioned renderer and publish transaction | P0 | Editor, schema | Snapshot compatibility/race tests |
+
+| Order | Ticket                                                    | Priority | Dependency       | Acceptance evidence               |
+| ----- | --------------------------------------------------------- | -------- | ---------------- | --------------------------------- |
+| 1     | P0-01.01–09: close product/technical P0 decisions         | P0       | Existing docs    | Signed decisions/ADRs             |
+| 2     | SP-01: wildcard host/TLS proof                            | P0       | Domain/test host | HTTPS and routing logs            |
+| 3     | SP-02: Clerk session/host proof                           | P0       | Test app         | Session/role security tests       |
+| 4     | SP-03: Neon/Prisma pool proof                             | P0       | DB credentials   | Migration/concurrency report      |
+| 5     | SP-04: R2 upload proof                                    | P0       | R2 credentials   | Signed upload validation report   |
+| 6     | FND-01/03/07: repo, modules and CI                        | P0       | Key spikes       | Clean CI + staging build          |
+| 7     | DB-01/08/10: schema extraction and SQL constraints        | P0       | P0 decisions     | Migration + integrity tests       |
+| 8     | DB-05/06: idempotency, quotas, media references           | P0       | Schema           | Parallel race tests               |
+| 9     | AUTH-01–05: Clerk bootstrap and policy layer              | P0       | DB, repo         | Authz/adversarial tests           |
+| 10    | ONB-01/02 and DASH-01: first creator slice                | P0       | Auth             | Signup-to-dashboard E2E           |
+| 11    | ED-05/06/11: autosave coordinator and protocol            | P0       | DB/API contracts | Concurrency/loss tests            |
+| 12    | TPL-01/PUB-03: versioned renderer and publish transaction | P0       | Editor, schema   | Snapshot compatibility/race tests |
+
+
+
 
 ### Ticket template
 
@@ -556,63 +658,79 @@ These are the first tickets to create. Do **not** begin complex UI work before t
 
 ---
 
+
+
 ## 20. Risk register and contingency plans
 
-| Risk | Severity | Early warning | Mitigation / contingency | Owner |
-|---|---|---|---|---|
-| Wildcard routing/TLS unsupported or costly | High | SP-01 fails | Amend host/deployment ADR before public renderer work | OPS/TL |
-| Clerk session behavior differs across subdomains | High | SP-02 mismatch | Keep auth on app origin; rework routing/security boundary | BE/SEC |
-| Prisma/Neon pooling or migration limitations | High | SP-03 connection/migration failure | Separate pooled runtime/direct migrations; tune/revise driver | BE/OPS |
-| Autosave loses data under latency | Critical | DB-T/E2E failures | Serialize saves, atomic CAS, durable idempotency, conflict UX | FE/BE |
-| Public cache leaks suspended content | Critical | SP-05/PUB-10 fails | Eligibility checks/revocation strategy; fail closed | BE/OPS |
-| Snapshot schema upgrade breaks old sites | High | TPL-07 fixture fails | Compatibility adapters and staged migrations | FE/BE |
-| Cross-tenant media association | Critical | DB-T09/MED-05 fails | DB constraints + service checks; block release | BE/SEC |
-| R2 object orphaning/storage cost | Medium | Cleanup backlog/storage growth | Asset reference tracking, retention GC, quota reservation | BE/OPS |
-| Scope creep in template/page builder | High | Arbitrary layout feature requests | Enforce structured content + supported variants; defer generic builder | PO/TL |
-| Underestimated visual/template effort | Medium | UX specs incomplete | Complete Figma/token matrix; adjust schedule | UX/PO |
-| Analytics/privacy policy incomplete | High | Consent or retention unresolved | Block tracking/release until approved | PO/LEGAL |
-| Insufficient solo-engineer capacity | High | CI/security/recovery work deferred | Reduce noncritical scope, obtain independent review, extend schedule | PO/TL |
-| Vendor outage / webhook delivery gap | Medium | Failed jobs, unsynced accounts | Reconciliation, idempotency, alerting, documented degraded UX | BE/OPS |
-| No verified brand/domain rights | High | Clearance fails | Resolve before public brand launch | PO/LEGAL |
+
+| Risk                                             | Severity | Early warning                      | Mitigation / contingency                                               | Owner    |
+| ------------------------------------------------ | -------- | ---------------------------------- | ---------------------------------------------------------------------- | -------- |
+| Wildcard routing/TLS unsupported or costly       | High     | SP-01 fails                        | Amend host/deployment ADR before public renderer work                  | OPS/TL   |
+| Clerk session behavior differs across subdomains | High     | SP-02 mismatch                     | Keep auth on app origin; rework routing/security boundary              | BE/SEC   |
+| Prisma/Neon pooling or migration limitations     | High     | SP-03 connection/migration failure | Separate pooled runtime/direct migrations; tune/revise driver          | BE/OPS   |
+| Autosave loses data under latency                | Critical | DB-T/E2E failures                  | Serialize saves, atomic CAS, durable idempotency, conflict UX          | FE/BE    |
+| Public cache leaks suspended content             | Critical | SP-05/PUB-10 fails                 | Eligibility checks/revocation strategy; fail closed                    | BE/OPS   |
+| Snapshot schema upgrade breaks old sites         | High     | TPL-07 fixture fails               | Compatibility adapters and staged migrations                           | FE/BE    |
+| Cross-tenant media association                   | Critical | DB-T09/MED-05 fails                | DB constraints + service checks; block release                         | BE/SEC   |
+| R2 object orphaning/storage cost                 | Medium   | Cleanup backlog/storage growth     | Asset reference tracking, retention GC, quota reservation              | BE/OPS   |
+| Scope creep in template/page builder             | High     | Arbitrary layout feature requests  | Enforce structured content + supported variants; defer generic builder | PO/TL    |
+| Underestimated visual/template effort            | Medium   | UX specs incomplete                | Complete Figma/token matrix; adjust schedule                           | UX/PO    |
+| Analytics/privacy policy incomplete              | High     | Consent or retention unresolved    | Block tracking/release until approved                                  | PO/LEGAL |
+| Insufficient solo-engineer capacity              | High     | CI/security/recovery work deferred | Reduce noncritical scope, obtain independent review, extend schedule   | PO/TL    |
+| Vendor outage / webhook delivery gap             | Medium   | Failed jobs, unsynced accounts     | Reconciliation, idempotency, alerting, documented degraded UX          | BE/OPS   |
+| No verified brand/domain rights                  | High     | Clearance fails                    | Resolve before public brand launch                                     | PO/LEGAL |
+
 
 ---
 
+
+
 ## 21. Requirement-to-delivery traceability
 
-| Product capability | PRD reference | App flow / UX | Primary implementation | Verification |
-|---|---|---|---|---|
-| Sign up, sign in, account | PRD §8 | APP_FLOW §8; UX §8.4 | AUTH-01–08 | E2E-01, E2E-14 |
-| Onboarding | PRD §9 | APP_FLOW §9; UX §8.5–8.9 | ONB-01–03 | E2E-01/02 |
-| Dashboard | PRD §10 | APP_FLOW §10; UX §8.10 | DASH-01 | E2E-01 |
-| Structured content | PRD §11 | APP_FLOW §11; UX §8.11–8.20 | DB-03, ED-01–04 | E2E-03 |
-| Autosave and consistency | PRD §12 | APP_FLOW §12; UX §10 | DB-05, ED-05–11 | DB-T01–03, E2E-04/05 |
-| Templates and design | PRD §13 | APP_FLOW §11; UX §8.19–8.20 | TPL-01–07 | E2E-03/15 |
-| Publish/version/rollback | PRD §14 | APP_FLOW §13; UX §8.21–8.23 | DB-04, PUB-01–04 | DB-T06/07, E2E-06–09 |
-| Public subdomains | PRD §15 | APP_FLOW §16; UX §8.28–8.29 | SP-01, PUB-05–07 | E2E-01/09/13 |
-| Media | PRD §16 | APP_FLOW §15; UX media specs | DB-06, MED-01–05 | DB-T05/09, E2E-11 |
-| SEO | PRD §17 | APP_FLOW §16; UX public templates | MKT-03, PUB-08 | E2E-13 |
-| Admin and moderation | PRD §18 | APP_FLOW §18; UX §8.31–8.38 | ADM-01–06 | E2E-12, SEC-01 |
-| Feedback/reports | PRD §19 | APP_FLOW §17–18 | ADM-04 | E2E-12, abuse tests |
-| Analytics | PRD §20 | UX/APP_FLOW events | OBS-01–04 | Event QA and consent tests |
-| Security/privacy | PRD §21 | All protected flows | AUTH, SEC, DB, MED | SEC-01–06 |
-| Nonfunctional requirements | PRD §22 | All flows | FND, OPS, REL | REL-01–07 |
-| Entitlements | PRD §23 | Editor/onboarding | DB-05, ED-03, MED-01 | DB-T04/05 |
-| Failure states | PRD §24 | APP_FLOW §12, §19+ | ED, PUB, OPS | E2E-04/05/09 |
-| Release criteria | PRD §25 | All | WS-11 | Signed launch gates |
+
+| Product capability         | PRD reference | App flow / UX                     | Primary implementation | Verification               |
+| -------------------------- | ------------- | --------------------------------- | ---------------------- | -------------------------- |
+| Sign up, sign in, account  | PRD §8        | APP_FLOW §8; UX §8.4              | AUTH-01–08             | E2E-01, E2E-14             |
+| Onboarding                 | PRD §9        | APP_FLOW §9; UX §8.5–8.9          | ONB-01–03              | E2E-01/02                  |
+| Dashboard                  | PRD §10       | APP_FLOW §10; UX §8.10            | DASH-01                | E2E-01                     |
+| Structured content         | PRD §11       | APP_FLOW §11; UX §8.11–8.20       | DB-03, ED-01–04        | E2E-03                     |
+| Autosave and consistency   | PRD §12       | APP_FLOW §12; UX §10              | DB-05, ED-05–11        | DB-T01–03, E2E-04/05       |
+| Templates and design       | PRD §13       | APP_FLOW §11; UX §8.19–8.20       | TPL-01–07              | E2E-03/15                  |
+| Publish/version/rollback   | PRD §14       | APP_FLOW §13; UX §8.21–8.23       | DB-04, PUB-01–04       | DB-T06/07, E2E-06–09       |
+| Public path-based URLs     | PRD §15       | APP_FLOW §16; UX §8.28–8.29       | SP-01, PUB-05–07       | E2E-01/09/13               |
+| Media                      | PRD §16       | APP_FLOW §15; UX media specs      | DB-06, MED-01–05       | DB-T05/09, E2E-11          |
+| SEO                        | PRD §17       | APP_FLOW §16; UX public templates | MKT-03, PUB-08         | E2E-13                     |
+| Admin and moderation       | PRD §18       | APP_FLOW §18; UX §8.31–8.38       | ADM-01–06              | E2E-12, SEC-01             |
+| Feedback/reports           | PRD §19       | APP_FLOW §17–18                   | ADM-04                 | E2E-12, abuse tests        |
+| Analytics                  | PRD §20       | UX/APP_FLOW events                | OBS-01–04              | Event QA and consent tests |
+| Security/privacy           | PRD §21       | All protected flows               | AUTH, SEC, DB, MED     | SEC-01–06                  |
+| Nonfunctional requirements | PRD §22       | All flows                         | FND, OPS, REL          | REL-01–07                  |
+| Entitlements               | PRD §23       | Editor/onboarding                 | DB-05, ED-03, MED-01   | DB-T04/05                  |
+| Failure states             | PRD §24       | APP_FLOW §12, §19+                | ED, PUB, OPS           | E2E-04/05/09               |
+| Release criteria           | PRD §25       | All                               | WS-11                  | Signed launch gates        |
+
 
 **Traceability rule:** Each accepted PRD requirement must have at least one implementation ticket and a verifiable acceptance test before launch. This table is a baseline; expand to requirement-level IDs as the ticket backlog is created.
 
 ---
 
+
+
 ## 22. Release readiness checklist and sign-off record
 
+
+
 ### Product and UX
+
 - [ ] MVP scope frozen and all P0 product decisions signed.
 - [ ] All supported screens/routes and empty/error states match approved flow.
 - [ ] Minimal, Professional and Creative templates approved on desktop/tablet/mobile.
 - [ ] Publish readiness, version history/rollback, account deletion and moderation UX approved.
 
+
+
 ### Engineering and security
+
 - [ ] Schema and custom SQL constraints validated in actual PostgreSQL.
 - [ ] All critical API contracts implemented and tested.
 - [ ] Autosave CAS, idempotency, quota races and concurrent publishing tests pass.
@@ -620,7 +738,10 @@ These are the first tickets to create. Do **not** begin complex UI work before t
 - [ ] Historical snapshot/template compatibility tests pass.
 - [ ] No known unmitigated release-blocking vulnerabilities.
 
+
+
 ### Infrastructure and operations
+
 - [ ] Wildcard DNS/TLS, Clerk, Neon, R2, caching and webhook PoCs verified.
 - [ ] Staging and production isolated; secrets and least privilege reviewed.
 - [ ] SLO/performance budgets, RTO/RPO and revocation objective approved and measured.
@@ -628,30 +749,38 @@ These are the first tickets to create. Do **not** begin complex UI work before t
 - [ ] Analytics consent, privacy, retention, brand/domain and legal requirements approved.
 - [ ] Production smoke test, canary/controlled rollout and rollback owner assigned.
 
+
+
 ### Sign-off table (not yet approved)
 
-| Approver | Required evidence | Status |
-|---|---|---|
-| Product | Scope and acceptance report | Pending |
-| Engineering | Architecture, DB/API, CI, test report | Pending |
-| Design | Template/UX/a11y review | Pending |
-| Security | Threat model and adversarial results | Pending |
-| Operations | PoCs, SLOs, restore/rollback, alerts | Pending |
+
+| Approver                      | Required evidence                          | Status  |
+| ----------------------------- | ------------------------------------------ | ------- |
+| Product                       | Scope and acceptance report                | Pending |
+| Engineering                   | Architecture, DB/API, CI, test report      | Pending |
+| Design                        | Template/UX/a11y review                    | Pending |
+| Security                      | Threat model and adversarial results       | Pending |
+| Operations                    | PoCs, SLOs, restore/rollback, alerts       | Pending |
 | Legal/privacy (as applicable) | Terms, Privacy, consent, retention, domain | Pending |
+
 
 **Go/no-go decision:** Not yet eligible. No implementation, tests, infrastructure spikes or production validation have been executed as of this document version.
 
 ---
+
+
 
 ## 23. Immediate next actions
 
 1. **Approve or amend this plan** and assign actual owners; decide which roles are handled by the same engineer.
 2. **Close Phase 0 product/security decisions** that affect database fields and UX (rich text, quotas, minimum publish fields, media caps, version retention, deletion/consent).
 3. **Run SP-01–SP-04 first** to verify wildcard routing, Clerk, Neon/Prisma and R2 before deep implementation.
-4. **Extract and validate executable `schema.prisma` and SQL migrations** from `BACKEND_SCHEMA.md`; resolve all §13 P0 gaps.
-5. **Write `docs/api/API_CONTRACTS.md`** with endpoint-by-endpoint Zod DTOs, error registry, ownership and idempotency semantics.
+4. **Extract and validate executable** `schema.prisma` **and SQL migrations** from `BACKEND_SCHEMA.md`; resolve all §13 P0 gaps.
+5. **Write** `docs/api/API_CONTRACTS.md` with endpoint-by-endpoint Zod DTOs, error registry, ownership and idempotency semantics.
 6. **Create tickets from the backlog IDs** and configure CI/staging with evidence links for each gate.
 7. **Implement the first secure vertical slice:** Clerk signup → user provisioning → portfolio creation → onboarding → dashboard, then proceed to editor autosave.
+
+
 
 ### Appendix A — Recommended repository skeleton (subject to validation)
 
@@ -687,6 +816,8 @@ foliovanta/
 │   └── e2e/
 └── .github/workflows/
 ```
+
+
 
 ### Appendix B — Status vocabulary
 

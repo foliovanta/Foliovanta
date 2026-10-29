@@ -9,7 +9,9 @@ vi.mock("@/lib/api/portfolios-client", () => ({
   publishPortfolio: vi.fn(),
   unpublishPortfolio: vi.fn(),
   listVersions: vi.fn(),
+  rollbackPortfolio: vi.fn(),
   updateUsername: vi.fn(),
+  updateTemplate: vi.fn(),
 }));
 
 import { PublishPanel } from "@/app/editor/[portfolioId]/[section]/publish-panel";
@@ -17,6 +19,7 @@ import {
   getPublishStatus,
   listVersions,
   publishPortfolio,
+  rollbackPortfolio,
   unpublishPortfolio,
   updateUsername,
 } from "@/lib/api/portfolios-client";
@@ -25,6 +28,7 @@ const statusMock = vi.mocked(getPublishStatus);
 const publishMock = vi.mocked(publishPortfolio);
 const unpublishMock = vi.mocked(unpublishPortfolio);
 const versionsMock = vi.mocked(listVersions);
+const rollbackMock = vi.mocked(rollbackPortfolio);
 const usernameMock = vi.mocked(updateUsername);
 
 const PID = "11111111-1111-1111-1111-111111111111";
@@ -33,6 +37,7 @@ const status = (overrides: Partial<PublishStatus> = {}): PublishStatus => ({
   slug: "ada",
   publicSlug: "10482",
   username: "ada",
+  templateKey: "minimal",
   publicationStatus: "DRAFT",
   moderationStatus: "CLEAR",
   revision: "5",
@@ -49,6 +54,7 @@ describe("PublishPanel", () => {
     publishMock.mockReset();
     unpublishMock.mockReset();
     versionsMock.mockReset();
+    rollbackMock.mockReset();
     usernameMock.mockReset();
     versionsMock.mockResolvedValue({ ok: true, data: { versions: [], nextCursor: null } });
   });
@@ -190,6 +196,29 @@ describe("PublishPanel", () => {
     expect(await screen.findByText(/no longer public/)).toBeInTheDocument();
   });
 
+  it("changes the template with the loaded revision and refetches", async () => {
+    const user = userEvent.setup();
+    statusMock
+      .mockResolvedValueOnce({ ok: true, data: status({ templateKey: "minimal", revision: "5" }) })
+      .mockResolvedValueOnce({
+        ok: true,
+        data: status({ templateKey: "creative", revision: "6" }),
+      });
+    const { updateTemplate } = await import("@/lib/api/portfolios-client");
+    const templateMock = vi.mocked(updateTemplate);
+    templateMock.mockResolvedValue({ ok: true, data: { templateKey: "creative", revision: "6" } });
+
+    render(<PublishPanel portfolioId={PID} />);
+    // The current selection is reflected.
+    const minimal = await screen.findByRole("radio", { name: /Minimal/ });
+    expect(minimal).toBeChecked();
+
+    await user.click(screen.getByRole("radio", { name: /Creative/ }));
+
+    expect(templateMock).toHaveBeenCalledWith(PID, "creative", "5");
+    await waitFor(() => expect(statusMock).toHaveBeenCalledTimes(2));
+  });
+
   it("edits the URL username and refetches so the link stays in sync", async () => {
     const user = userEvent.setup();
     statusMock
@@ -217,38 +246,104 @@ describe("PublishPanel", () => {
     await waitFor(() => expect(statusMock).toHaveBeenCalledTimes(2));
   });
 
-  it("renders a read-only version history with the active indicator", async () => {
+  const activeVersion = (versionNumber: number) => ({
+    versionNumber,
+    publishedAt: "2026-01-02T00:00:00.000Z",
+    templateId: "minimal",
+    templateVersion: "1",
+  });
+  const twoVersions = {
+    ok: true as const,
+    data: {
+      versions: [
+        { ...activeVersion(2), isActive: true },
+        {
+          versionNumber: 1,
+          publishedAt: "2026-01-01T00:00:00.000Z",
+          templateId: "minimal",
+          templateVersion: "1",
+          isActive: false,
+        },
+      ],
+      nextCursor: null,
+    },
+  };
+
+  it("renders the version history with the live indicator and a preview link per version", async () => {
     statusMock.mockResolvedValue({
       ok: true,
-      data: status({ publicationStatus: "PUBLISHED", publishedAt: "2026-01-01T00:00:00.000Z" }),
+      data: status({
+        publicationStatus: "PUBLISHED",
+        publishedAt: "2026-01-02T00:00:00.000Z",
+        activeVersion: activeVersion(2),
+      }),
     });
-    versionsMock.mockResolvedValue({
-      ok: true,
-      data: {
-        versions: [
-          {
-            versionNumber: 2,
-            publishedAt: "2026-01-02T00:00:00.000Z",
-            templateId: "minimal",
-            templateVersion: "1",
-            isActive: true,
-          },
-          {
-            versionNumber: 1,
-            publishedAt: "2026-01-01T00:00:00.000Z",
-            templateId: "minimal",
-            templateVersion: "1",
-            isActive: false,
-          },
-        ],
-        nextCursor: null,
-      },
-    });
+    versionsMock.mockResolvedValue(twoVersions);
 
     render(<PublishPanel portfolioId={PID} />);
 
     expect(await screen.findByText("Version 2")).toBeInTheDocument();
     expect(screen.getByText("Version 1")).toBeInTheDocument();
-    expect(screen.getByText("Active")).toBeInTheDocument();
+    expect(screen.getByText("Live")).toBeInTheDocument();
+    // Both versions are previewable; the owner-only historical frame is linked.
+    const previews = screen.getAllByRole("link", { name: "Preview" });
+    expect(previews).toHaveLength(2);
+    expect(previews[0]).toHaveAttribute("href", `/preview/${PID}/version/2`);
+  });
+
+  it("rolls back a non-active version after confirmation, sending the active version", async () => {
+    const user = userEvent.setup();
+    statusMock.mockResolvedValue({
+      ok: true,
+      data: status({
+        publicationStatus: "PUBLISHED",
+        publishedAt: "2026-01-02T00:00:00.000Z",
+        activeVersion: activeVersion(2),
+      }),
+    });
+    versionsMock.mockResolvedValue(twoVersions);
+    rollbackMock.mockResolvedValue({
+      ok: true,
+      data: {
+        activeVersionNumber: 1,
+        publicationStatus: "PUBLISHED",
+        publishedAt: "2026-01-03T00:00:00.000Z",
+        changed: true,
+      },
+    });
+
+    render(<PublishPanel portfolioId={PID} />);
+
+    // Only the non-active version offers rollback; it takes a deliberate confirm.
+    await user.click(await screen.findByRole("button", { name: "Roll back" }));
+    expect(rollbackMock).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Make this version live" }));
+
+    // Optimistic concurrency: the active version (2) is sent as expected.
+    expect(rollbackMock).toHaveBeenCalledWith(PID, 1, 2);
+    await waitFor(() => expect(statusMock).toHaveBeenCalledTimes(2)); // parent refresh
+  });
+
+  it("surfaces a rollback conflict and reloads", async () => {
+    const user = userEvent.setup();
+    statusMock.mockResolvedValue({
+      ok: true,
+      data: status({
+        publicationStatus: "PUBLISHED",
+        publishedAt: "2026-01-02T00:00:00.000Z",
+        activeVersion: activeVersion(2),
+      }),
+    });
+    versionsMock.mockResolvedValue(twoVersions);
+    rollbackMock.mockResolvedValue({
+      ok: false,
+      error: { status: 409, code: "ROLLBACK_CONFLICT", message: "conflict" },
+    });
+
+    render(<PublishPanel portfolioId={PID} />);
+    await user.click(await screen.findByRole("button", { name: "Roll back" }));
+    await user.click(screen.getByRole("button", { name: "Make this version live" }));
+
+    expect(await screen.findByText(/live version changed/)).toBeInTheDocument();
   });
 });

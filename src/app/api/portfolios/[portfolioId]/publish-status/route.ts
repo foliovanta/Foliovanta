@@ -41,6 +41,7 @@ export async function GET(
           slug: status.slug,
           publicSlug: status.publicSlug,
           username: status.username,
+          templateKey: status.templateKey,
           publicationStatus: status.publicationStatus,
           moderationStatus: status.moderationStatus,
           revision: status.revision.toString(),

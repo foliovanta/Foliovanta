@@ -1,9 +1,10 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("next/font/google", () => ({
-  Fraunces: () => ({ variable: "font-fraunces", className: "font-fraunces" }),
-}));
+vi.mock("next/font/google", () => {
+  const stub = () => ({ variable: "font-stub", className: "font-stub" });
+  return { Fraunces: stub, Inter: stub, Space_Grotesk: stub, Source_Serif_4: stub };
+});
 
 import { MinimalTemplate } from "@/components/public/minimal-template";
 import type { PublishedSnapshot } from "@/lib/publishing/snapshot";

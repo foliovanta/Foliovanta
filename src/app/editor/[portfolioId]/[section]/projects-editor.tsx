@@ -11,6 +11,7 @@ import {
   updateProject,
 } from "@/lib/api/portfolios-client";
 import { type DraftCollectionApi, useDraftCollection } from "../use-draft-collection";
+import { ImageUploadField } from "./image-upload-field";
 import { ProjectForm } from "./project-form";
 
 const api: DraftCollectionApi<Project, ProjectFields> = {
@@ -155,6 +156,20 @@ export function ProjectsEditor({ portfolioId }: { portfolioId: string }) {
                       Repository
                     </a>
                   )}
+                </div>
+
+                <div className="mt-3">
+                  <ImageUploadField
+                    label="Cover"
+                    shape="rect"
+                    purpose="PROJECT_COVER"
+                    portfolioId={portfolioId}
+                    target={{ kind: "project", projectId: project.id }}
+                    currentAssetId={project.coverAssetId}
+                    getRevision={() => dc.revision}
+                    onAttached={() => void dc.reload()}
+                    onConflict={() => void dc.reload()}
+                  />
                 </div>
               </div>
 

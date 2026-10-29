@@ -1,9 +1,21 @@
 import "server-only";
 
 import type { Prisma } from "@/generated/prisma/client";
+import { designConfigSchema } from "@/lib/design/config";
 import type { PortfolioDraftInput } from "@/lib/publishing/snapshot";
 
 type Tx = Prisma.TransactionClient;
+
+// Normalize the stored design into the snapshot theme. An uncustomized portfolio
+// (design = null) publishes an EMPTY theme — identical to pre-M3.2 snapshots, so
+// publishing stays a true no-op and the public resolver applies template
+// defaults. Only a valid custom design is carried through; invalid stored data
+// degrades to defaults rather than failing the publish.
+function normalizeDesignTheme(design: unknown): Record<string, unknown> {
+  if (design == null) return {};
+  const parsed = designConfigSchema.safeParse(design);
+  return parsed.success ? parsed.data : {};
+}
 
 const order: Prisma.ProjectOrderByWithRelationInput[] = [{ position: "asc" }, { id: "asc" }];
 
@@ -19,7 +31,7 @@ export async function loadPortfolioDraftInput(
 ): Promise<PortfolioDraftInput> {
   const portfolio = await client.portfolio.findUniqueOrThrow({
     where: { id: portfolioId },
-    select: { slug: true },
+    select: { slug: true, templateKey: true, templateVersion: true, design: true },
   });
 
   const [profile, sections, projects, experience, education, skills] = await Promise.all([
@@ -92,9 +104,9 @@ export async function loadPortfolioDraftInput(
 
   return {
     slug: portfolio.slug,
-    templateKey: null,
-    templateVersion: null,
-    theme: null,
+    templateKey: portfolio.templateKey,
+    templateVersion: portfolio.templateVersion,
+    theme: normalizeDesignTheme(portfolio.design),
     profile,
     sections,
     projects,

@@ -7,11 +7,14 @@ import { Button } from "@/components/ui/button";
 import {
   type ApiError,
   type PublishStatus,
+  type TemplateKey,
   type VersionSummary,
   getPublishStatus,
   listVersions,
   publishPortfolio,
+  rollbackPortfolio,
   unpublishPortfolio,
+  updateTemplate,
   updateUsername,
 } from "@/lib/api/portfolios-client";
 import { publicPortfolioPath, publicPortfolioUrl } from "@/lib/urls/public-url";
@@ -41,6 +44,7 @@ export function PublishPanel({ portfolioId }: { portfolioId: string }) {
   const [action, setAction] = useState<Action>("idle");
   const [notice, setNotice] = useState<Notice | null>(null);
   const [confirmingUnpublish, setConfirmingUnpublish] = useState(false);
+  const [savingTemplate, setSavingTemplate] = useState(false);
 
   const refresh = useCallback(async () => {
     const result = await getPublishStatus(portfolioId);
@@ -126,6 +130,39 @@ export function PublishPanel({ portfolioId }: { portfolioId: string }) {
     handleMutationError(result.error, false);
   };
 
+  const changeTemplate = async (templateKey: TemplateKey) => {
+    if (templateKey === status.templateKey) return;
+    setSavingTemplate(true);
+    setNotice(null);
+    const result = await updateTemplate(portfolioId, templateKey, status.revision);
+    setSavingTemplate(false);
+
+    if (result.ok) {
+      setNotice({
+        tone: published ? "info" : "success",
+        message: published
+          ? "Template updated. Publish to apply it to your live portfolio."
+          : "Template updated.",
+      });
+      await refresh();
+      return;
+    }
+    if (result.error.status === 409 && result.error.code === "REVISION_CONFLICT") {
+      setNotice({
+        tone: "conflict",
+        message: "Your draft changed since this view loaded. Reloaded the latest — try again.",
+      });
+      void refresh();
+    } else if (result.error.code === "NETWORK_ERROR") {
+      setNotice({ tone: "error", message: "Network error. Please try again." });
+    } else {
+      setNotice({
+        tone: "error",
+        message: result.error.message || "Couldn't change the template.",
+      });
+    }
+  };
+
   function handleMutationError(error: ApiError, isPublish: boolean) {
     if (error.status === 409 && error.code === "REVISION_CONFLICT") {
       setNotice({
@@ -179,6 +216,13 @@ export function PublishPanel({ portfolioId }: { portfolioId: string }) {
         </p>
       )}
 
+      <TemplateSelector
+        current={status.templateKey}
+        saving={savingTemplate}
+        disabled={busy}
+        onSelect={(key) => void changeTemplate(key)}
+      />
+
       {!ready && !suspended && <ReadinessList status={status} portfolioId={portfolioId} />}
 
       {published && !suspended && (
@@ -223,8 +267,70 @@ export function PublishPanel({ portfolioId }: { portfolioId: string }) {
           ))}
       </div>
 
-      <VersionHistory portfolioId={portfolioId} />
+      <VersionHistory
+        portfolioId={portfolioId}
+        activeVersionNumber={status.activeVersion?.versionNumber ?? null}
+        canRollback={published && !suspended}
+        onRolledBack={() => void refresh()}
+      />
     </div>
+  );
+}
+
+const TEMPLATE_OPTIONS: { key: TemplateKey; label: string; description: string }[] = [
+  { key: "minimal", label: "Minimal", description: "Clean editorial single column" },
+  { key: "professional", label: "Professional", description: "Structured sidebar & timelines" },
+  { key: "creative", label: "Creative", description: "Bold, art-directed layout" },
+];
+
+function TemplateSelector({
+  current,
+  saving,
+  disabled,
+  onSelect,
+}: {
+  current: string;
+  saving: boolean;
+  disabled: boolean;
+  onSelect: (key: TemplateKey) => void;
+}) {
+  return (
+    <fieldset disabled={disabled || saving} className="min-w-0 disabled:opacity-60">
+      <legend className="mb-2 flex items-center gap-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">
+        Template
+        {saving && <span className="text-xs font-normal text-zinc-500">Saving…</span>}
+      </legend>
+      <div className="grid gap-2 sm:grid-cols-3">
+        {TEMPLATE_OPTIONS.map((option) => {
+          const selected = option.key === current;
+          return (
+            <label
+              key={option.key}
+              className={`flex cursor-pointer flex-col gap-1 rounded-md border p-3 transition has-focus-visible:ring-2 has-focus-visible:ring-indigo-600 ${
+                selected
+                  ? "border-indigo-600 bg-indigo-50/50 dark:border-indigo-400 dark:bg-indigo-950/30"
+                  : "border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="template"
+                  value={option.key}
+                  checked={selected}
+                  onChange={() => onSelect(option.key)}
+                  className="accent-indigo-600"
+                />
+                <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                  {option.label}
+                </span>
+              </span>
+              <span className="text-xs text-zinc-500 dark:text-zinc-400">{option.description}</span>
+            </label>
+          );
+        })}
+      </div>
+    </fieldset>
   );
 }
 
@@ -408,11 +514,35 @@ function PublicLink({
   );
 }
 
-function VersionHistory({ portfolioId }: { portfolioId: string }) {
+function VersionHistory({
+  portfolioId,
+  activeVersionNumber,
+  canRollback,
+  onRolledBack,
+}: {
+  portfolioId: string;
+  activeVersionNumber: number | null;
+  canRollback: boolean;
+  onRolledBack: () => void;
+}) {
   const [versions, setVersions] = useState<VersionSummary[]>([]);
   const [cursor, setCursor] = useState<number | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [loadingMore, setLoadingMore] = useState(false);
+  const [confirming, setConfirming] = useState<number | null>(null);
+  const [working, setWorking] = useState<number | null>(null);
+  const [rowError, setRowError] = useState<string | null>(null);
+
+  const reload = useCallback(async () => {
+    const result = await listVersions(portfolioId);
+    if (result.ok) {
+      setVersions(result.data.versions);
+      setCursor(result.data.nextCursor);
+      setState("ready");
+    } else {
+      setState("error");
+    }
+  }, [portfolioId]);
 
   useEffect(() => {
     let active = true;
@@ -442,9 +572,38 @@ function VersionHistory({ portfolioId }: { portfolioId: string }) {
     }
   };
 
+  const rollBack = async (versionNumber: number) => {
+    if (activeVersionNumber === null) return;
+    setConfirming(null);
+    setWorking(versionNumber);
+    setRowError(null);
+    const result = await rollbackPortfolio(portfolioId, versionNumber, activeVersionNumber);
+    setWorking(null);
+
+    if (result.ok) {
+      onRolledBack(); // refresh parent status (badge, public link, active version)
+      await reload(); // move the Active indicator to the restored version
+      return;
+    }
+    if (result.error.code === "ROLLBACK_CONFLICT") {
+      setRowError("The live version changed since this list loaded. Reloaded — review and retry.");
+      onRolledBack();
+      void reload();
+    } else if (result.error.code === "TARGET_UNRENDERABLE") {
+      setRowError("That version can't be made live — it uses a template this site no longer supports.");
+    } else if (result.error.code === "NETWORK_ERROR") {
+      setRowError("Network error. Please try again.");
+    } else {
+      setRowError(result.error.message || "Couldn't roll back to that version.");
+    }
+  };
+
   if (state === "loading" || (state === "ready" && versions.length === 0)) {
     return null; // nothing to show until there is published history
   }
+
+  const linkClass =
+    "underline underline-offset-2 hover:text-zinc-900 focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:outline-none dark:hover:text-zinc-100";
 
   return (
     <section className="border-t border-zinc-200 pt-6 dark:border-zinc-800">
@@ -455,27 +614,92 @@ function VersionHistory({ portfolioId }: { portfolioId: string }) {
         <p className="text-sm text-red-600 dark:text-red-400">Unable to load version history.</p>
       ) : (
         <>
-          <ul className="flex flex-col gap-2">
-            {versions.map((version) => (
-              <li
-                key={version.versionNumber}
-                className="flex flex-wrap items-center justify-between gap-2 text-sm"
-              >
-                <span className="flex items-center gap-2">
-                  <span className="font-medium text-zinc-900 dark:text-zinc-100">
-                    Version {version.versionNumber}
-                  </span>
-                  {version.isActive && (
-                    <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-950/40 dark:text-green-300">
-                      Active
+          {rowError && (
+            <p
+              role="alert"
+              className="mb-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200"
+            >
+              {rowError}
+            </p>
+          )}
+          <ul className="flex flex-col divide-y divide-zinc-100 dark:divide-zinc-800">
+            {versions.map((version) => {
+              const isActive = version.versionNumber === activeVersionNumber;
+              const confirmingThis = confirming === version.versionNumber;
+              const busy = working !== null;
+              return (
+                <li
+                  key={version.versionNumber}
+                  className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-2.5 text-sm"
+                >
+                  <span className="flex items-center gap-2">
+                    <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                      Version {version.versionNumber}
                     </span>
-                  )}
-                </span>
-                <span className="text-zinc-500 dark:text-zinc-400">
-                  {new Date(version.publishedAt).toLocaleString()} · {version.templateId}
-                </span>
-              </li>
-            ))}
+                    {isActive && (
+                      <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-950/40 dark:text-green-300">
+                        Live
+                      </span>
+                    )}
+                    <span className="text-zinc-500 dark:text-zinc-400">
+                      {new Date(version.publishedAt).toLocaleDateString(undefined, {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                      })}{" "}
+                      · {version.templateId}
+                    </span>
+                  </span>
+
+                  <span className="flex items-center gap-3 text-zinc-600 dark:text-zinc-400">
+                    <a
+                      href={`/preview/${portfolioId}/version/${version.versionNumber}`}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className={linkClass}
+                    >
+                      Preview
+                    </a>
+                    {canRollback &&
+                      !isActive &&
+                      (confirmingThis ? (
+                        <span className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => void rollBack(version.versionNumber)}
+                            disabled={busy}
+                            className="font-medium text-indigo-700 underline underline-offset-2 hover:text-indigo-900 focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:outline-none disabled:opacity-50 dark:text-indigo-300 dark:hover:text-indigo-200"
+                          >
+                            {working === version.versionNumber
+                              ? "Restoring…"
+                              : "Make this version live"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirming(null)}
+                            disabled={busy}
+                            className={`${linkClass} disabled:opacity-50`}
+                          >
+                            Cancel
+                          </button>
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRowError(null);
+                            setConfirming(version.versionNumber);
+                          }}
+                          disabled={busy}
+                          className={`${linkClass} disabled:opacity-50`}
+                        >
+                          Roll back
+                        </button>
+                      ))}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
           {cursor !== null && (
             <div className="mt-3">

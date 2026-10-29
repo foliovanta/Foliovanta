@@ -23,6 +23,8 @@ export type PublishStatus = {
   // to build the public link. Not an authorization key.
   publicSlug: string;
   username: string;
+  // The draft's selected template (what the next publish will use).
+  templateKey: string;
   publicationStatus: PublicationStatus;
   moderationStatus: ModerationStatus;
   revision: bigint;
@@ -51,6 +53,7 @@ export async function getPublishStatus(
     where: { id: portfolioId, ownerId: resolved.userId, deletedAt: null },
     select: {
       slug: true,
+      templateKey: true,
       owner: { select: { publicSlug: true, username: true } },
       publicationStatus: true,
       moderationStatus: true,
@@ -97,6 +100,7 @@ export async function getPublishStatus(
       slug: portfolio.slug,
       publicSlug: portfolio.owner.publicSlug.toString(),
       username: portfolio.owner.username,
+      templateKey: portfolio.templateKey,
       publicationStatus: portfolio.publicationStatus,
       moderationStatus: portfolio.moderationStatus,
       revision: portfolio.draftRevision,

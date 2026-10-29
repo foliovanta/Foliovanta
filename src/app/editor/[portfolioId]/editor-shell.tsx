@@ -21,6 +21,7 @@ const SECTIONS = [
   { key: "education", label: "Education", ready: true },
   { key: "skills", label: "Skills", ready: true },
   { key: "sections", label: "Sections", ready: true },
+  { key: "design", label: "Design", ready: true },
   { key: "publish", label: "Publish", ready: true },
 ] as const;
 
@@ -120,6 +121,15 @@ export function EditorShell({
           <h1 className="mt-2 truncate text-lg font-semibold text-zinc-900 dark:text-zinc-50">
             {portfolio.title || portfolio.slug}
           </h1>
+          {/* Guarded so unsaved edits warn before leaving; preview shows the
+              last SAVED draft, consistent with that warning. */}
+          <button
+            type="button"
+            onClick={() => navigate(`/preview/${portfolioId}`)}
+            className="mt-3 inline-flex min-h-9 items-center rounded-md border border-zinc-300 px-3 text-sm font-medium text-zinc-700 hover:bg-zinc-50 focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:outline-none dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+          >
+            Preview draft
+          </button>
         </div>
         <nav aria-label="Editor sections">
           <ul className="flex gap-1 overflow-x-auto lg:flex-col lg:overflow-visible">

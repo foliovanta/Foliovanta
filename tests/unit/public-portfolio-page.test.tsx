@@ -1,9 +1,10 @@
 // @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("next/font/google", () => ({
-  Fraunces: () => ({ variable: "font-fraunces", className: "font-fraunces" }),
-}));
+vi.mock("next/font/google", () => {
+  const stub = () => ({ variable: "font-stub", className: "font-stub" });
+  return { Fraunces: stub, Inter: stub, Space_Grotesk: stub, Source_Serif_4: stub };
+});
 vi.mock("next/navigation", () => ({
   notFound: () => {
     throw new Error("NEXT_NOT_FOUND");
@@ -59,6 +60,28 @@ describe("public portfolio page (/[publicSlug]/[username])", () => {
     expect(meta.description).toBe("Pioneer of computing.");
     expect(String(meta.alternates?.canonical)).toMatch(/\/10482\/ada$/);
     expect(meta.robots).toMatchObject({ index: true });
+    expect(meta.twitter).toMatchObject({ card: "summary_large_image" });
+  });
+
+  it("emits escaped Person JSON-LD built from the published name", async () => {
+    readMock.mockResolvedValue({
+      ...visible,
+      snapshot: { ...snapshot, profile: { ...snapshot.profile, displayName: "Ada</script>" } },
+    });
+    const element = (await PublicPortfolioPage(params("10482", "ada"))) as {
+      props: {
+        children: Array<{
+          type?: string;
+          props?: { dangerouslySetInnerHTML?: { __html: string } };
+        }>;
+      };
+    };
+    const script = element.props.children.find((child) => child?.type === "script");
+    const html = script?.props?.dangerouslySetInnerHTML?.__html ?? "";
+    expect(html).toContain('"@type":"Person"');
+    expect(html).toContain("Ada"); // name present
+    expect(html).not.toContain("</script>"); // escaped — can't break out of the tag
+    expect(html).toContain("\\u003c");
   });
 
   it("returns noindex metadata for a non-visible portfolio", async () => {

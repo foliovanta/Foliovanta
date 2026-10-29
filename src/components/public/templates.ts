@@ -1,11 +1,14 @@
 import type { ReactNode } from "react";
 
 import {
+  CURRENT_TEMPLATE_VERSION,
   SNAPSHOT_SCHEMA_VERSION,
   type PublishedSnapshot,
   type TemplateKey,
 } from "@/lib/publishing/snapshot";
 import { MinimalTemplate } from "@/components/public/minimal-template";
+import { ProfessionalTemplate } from "@/components/public/professional-template";
+import { CreativeTemplate } from "@/components/public/creative-template";
 
 export type PortfolioTemplateProps = { snapshot: PublishedSnapshot };
 
@@ -21,25 +24,42 @@ export type PortfolioTemplate = {
   render: (props: PortfolioTemplateProps) => ReactNode;
 };
 
-const TEMPLATES: Partial<Record<TemplateKey, PortfolioTemplate>> = {
+// All registry keys are implemented. Each template declares the schema and
+// template versions it can render; nothing is a silent cross-template fallback.
+const TEMPLATES: Record<TemplateKey, PortfolioTemplate> = {
   minimal: {
     key: "minimal",
     supportedSchemaVersions: [SNAPSHOT_SCHEMA_VERSION],
-    supportedTemplateVersions: ["1.0.0"],
+    supportedTemplateVersions: [CURRENT_TEMPLATE_VERSION.minimal],
     render: MinimalTemplate,
+  },
+  professional: {
+    key: "professional",
+    supportedSchemaVersions: [SNAPSHOT_SCHEMA_VERSION],
+    supportedTemplateVersions: [CURRENT_TEMPLATE_VERSION.professional],
+    render: ProfessionalTemplate,
+  },
+  creative: {
+    key: "creative",
+    supportedSchemaVersions: [SNAPSHOT_SCHEMA_VERSION],
+    supportedTemplateVersions: [CURRENT_TEMPLATE_VERSION.creative],
+    render: CreativeTemplate,
   },
 };
 
-const FALLBACK_TEMPLATE = TEMPLATES.minimal!;
+// Minimal is the only safe cross-template fallback (it renders any valid
+// snapshot). It is used ONLY for a templateKey outside the registry, which the
+// snapshot schema's enum already prevents in practice — never to substitute one
+// real template for another.
+const FALLBACK_TEMPLATE = TEMPLATES.minimal;
 
 export type TemplateResolution = { template: PortfolioTemplate; isFallback: boolean };
 
 /**
- * Resolves the template for a snapshot's templateKey. Professional/Creative are
- * not built yet; rather than silently rendering Minimal, this flags the result
- * as a fallback so the caller can log it explicitly. The published portfolio
- * still renders (with Minimal) rather than 404ing on template choice — an
- * intentional, documented legacy fallback.
+ * Resolves the template for a snapshot's templateKey. All three keys are
+ * implemented, so a valid key always resolves to its own template. An unknown
+ * key (not possible for a schema-validated snapshot) flags a fallback so the
+ * caller logs it rather than silently rendering the wrong template.
  */
 export function resolveTemplate(key: TemplateKey): TemplateResolution {
   const template = TEMPLATES[key];
